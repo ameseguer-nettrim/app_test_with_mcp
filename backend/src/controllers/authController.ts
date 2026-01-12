@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import db from '../config/database';
 import { Person, JwtPayload } from '../types';
 import { AuthRequest } from '../middleware/auth';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import type { StringValue } from 'ms';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -38,10 +39,21 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const personId = result.insertId;
 
     // Generate token
+    const jwtSecret = process.env.JWT_SECRET;
+    
+    const signOptions: SignOptions = {
+      expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as StringValue,
+    };
+
+    if (!jwtSecret) {
+      res.status(500).json({ error: 'Secreto JWT no configurado' });
+      return;
+    }
+
     const token = jwt.sign(
-      { personId, email } as JwtPayload,
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { personId, email },
+      jwtSecret,
+      signOptions
     );
 
     res.status(201).json({
@@ -86,10 +98,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generate token
+    const jwtSecret = process.env.JWT_SECRET;
+    
+    const signOptions: SignOptions = {
+      expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as StringValue,
+    };
+
+    if (!jwtSecret) {
+      res.status(500).json({ error: 'Secreto JWT no configurado' });
+      return;
+    }
     const token = jwt.sign(
       { personId: person.id, email: person.email } as JwtPayload,
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      jwtSecret,
+      signOptions
     );
 
     res.json({
