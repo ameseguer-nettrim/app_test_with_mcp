@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { computed, watch } from 'vue';
 import NavBar from '@/components/NavBar.vue';
 import EnvironmentSelector from '@/components/EnvironmentSelector.vue';
 import AddExpenseForm from '@/components/AddExpenseForm.vue';

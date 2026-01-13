@@ -38,7 +38,7 @@ const router = createRouter({
 });
 
 // Navigation guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _, next) => {
   const isAuthenticated = authService.isAuthenticated();
   const requiresAuth = to.meta.requiresAuth !== false;
 

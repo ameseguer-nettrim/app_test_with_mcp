@@ -29,7 +29,7 @@
         <div class="flex justify-between items-start mb-2">
           <div class="flex-1">
             <div class="flex items-center space-x-3 mb-1">
-              <span class="text-lg font-semibold text-gray-800">€{{ parseFloat(expense.amount).toFixed(2) }}</span>
+              <span class="text-lg font-semibold text-gray-800">{{`€${expense.amount.toFixed(2)}`}}</span>
               <span class="text-sm text-gray-500">{{ formatDate(expense.expense_date) }}</span>
             </div>
             <p class="text-gray-700">{{ expense.description }}</p>
@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { Expense } from '@/types';
 

@@ -48,7 +48,7 @@
                     <div class="flex justify-between items-start">
                       <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-1">
-                          <span class="text-lg font-semibold text-gray-800">€{{ parseFloat(expense.amount).toFixed(2) }}</span>
+                          <span class="text-lg font-semibold text-gray-800">{{`€${expense.amount.toFixed(2)}`}}</span>
                           <span class="text-sm text-gray-500">{{ formatDate(expense.expense_date) }}</span>
                         </div>
                         <p class="text-gray-700">{{ expense.description }}</p>
@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { computed, watch } from 'vue';
 import NavBar from '@/components/NavBar.vue';
 import EnvironmentSelector from '@/components/EnvironmentSelector.vue';
 import { useEnvironmentStore } from '@/stores/environmentStore';
