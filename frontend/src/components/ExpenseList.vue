@@ -6,8 +6,7 @@
         v-if="expenses.length > 0"
         @click="handleComputeExpenses"
         :disabled="computing"
-        class="btn btn-primary"
-      >
+        class="btn btn-primary">
         {{ computing ? 'Computing...' : 'Compute & Export to Excel' }}
       </button>
     </div>
@@ -24,30 +23,42 @@
       <div
         v-for="expense in expenses"
         :key="expense.id"
-        class="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors"
-      >
-        <div class="flex justify-between items-start mb-2">
+        class="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+        <div class="p-4 flex justify-between items-start">
           <div class="flex-1">
-            <div class="flex items-center space-x-3 mb-1">
-              <span class="text-lg font-semibold text-gray-800">{{`€${expense.amount.toFixed(2)}`}}</span>
-              <span class="text-sm text-gray-500">{{ formatDate(expense.expense_date) }}</span>
+            <div class="flex items-baseline justify-between mb-1">
+              <span class="text-xl font-bold text-gray-900">€{{ expense.amount }}</span>
+              <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">{{
+                formatDate(expense.expense_date)
+              }}</span>
             </div>
-            <p class="text-gray-700">{{ expense.description }}</p>
-            <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-              <span>Paid by: <span class="font-medium">{{ expense.payer_name }}</span></span>
-              <span>•</span>
-              <span>Registered by: <span class="font-medium">{{ expense.registered_by_name }}</span></span>
-            </div>
+            <p class="text-gray-600 text-sm leading-relaxed">{{ expense.description }}</p>
           </div>
-          <button
-            @click="handleDeleteExpense(expense.id)"
-            class="text-red-600 hover:text-red-700 ml-4"
-            title="Delete expense"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+
+          <div class="relative ml-4">
+            <button
+              @click="handleDeleteExpense(expense.id)"
+              class="text-red-600 hover:text-red-700 ml-4"
+              title="Delete expense">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-between text-[10px] sm:text-xs text-gray-500 tracking-tight">
+          <span>
+            Paid by: <b class="text-gray-700">{{ expense.payer_name }}</b>
+          </span>
+          <span>
+            Registered by: <b class="text-gray-700">{{ expense.registered_by_name }}</b>
+          </span>
         </div>
       </div>
 
@@ -81,7 +92,10 @@ const formatDate = (dateString: string) => {
 };
 
 const calculateTotal = () => {
-  const total = props.expenses.reduce((sum, expense) => sum + parseFloat(expense.amount.toString()), 0);
+  const total = props.expenses.reduce(
+    (sum, expense) => sum + parseFloat(expense.amount.toString()),
+    0,
+  );
   return total.toFixed(2);
 };
 
@@ -99,7 +113,8 @@ const handleDeleteExpense = async (id: number) => {
 const handleComputeExpenses = async () => {
   if (!props.environmentId) return;
 
-  if (!confirm('This will generate an Excel file and archive all current expenses. Continue?')) return;
+  if (!confirm('This will generate an Excel file and archive all current expenses. Continue?'))
+    return;
 
   computing.value = true;
   try {
