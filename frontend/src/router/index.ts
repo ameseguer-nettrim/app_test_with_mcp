@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HistoryView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/invite/:token',
+    name: 'invitation',
+    component: () => import('@/views/InvitationView.vue'),
+  },
 ];
 
 const router = createRouter({
@@ -44,7 +49,11 @@ router.beforeEach((to, _, next) => {
 
   if (requiresAuth && !isAuthenticated) {
     next('/login');
-  } else if (!requiresAuth && isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+  } else if (
+    !requiresAuth &&
+    isAuthenticated &&
+    (to.path === '/login' || to.path === '/register')
+  ) {
     next('/dashboard');
   } else {
     next();

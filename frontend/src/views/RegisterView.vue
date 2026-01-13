@@ -1,9 +1,21 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
+  <div
+    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
     <div class="card max-w-md w-full">
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold text-primary-600 mb-2">Create Account</h1>
         <p class="text-gray-600">Start tracking your family expenses</p>
+      </div>
+
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-primary-600 mb-2">Create Account</h1>
+        <p class="text-gray-600">Start tracking your family expenses</p>
+
+        <div
+          v-if="infoMessage"
+          class="mt-4 p-3 bg-primary-50 border border-primary-200 text-primary-700 text-sm rounded-lg">
+          {{ infoMessage }}
+        </div>
       </div>
 
       <form @submit.prevent="handleRegister" class="space-y-4">
@@ -15,8 +27,7 @@
             type="text"
             required
             class="input"
-            placeholder="John Doe"
-          />
+            placeholder="John Doe" />
         </div>
 
         <div>
@@ -27,8 +38,7 @@
             type="email"
             required
             class="input"
-            placeholder="you@example.com"
-          />
+            placeholder="you@example.com" />
         </div>
 
         <div>
@@ -40,8 +50,7 @@
             required
             minlength="6"
             class="input"
-            placeholder="••••••••"
-          />
+            placeholder="••••••••" />
         </div>
 
         <div>
@@ -52,19 +61,14 @@
             type="password"
             required
             class="input"
-            placeholder="••••••••"
-          />
+            placeholder="••••••••" />
         </div>
 
         <div v-if="error" class="text-red-600 text-sm">
           {{ error }}
         </div>
 
-        <button
-          type="submit"
-          :disabled="loading"
-          class="btn btn-primary w-full"
-        >
+        <button type="submit" :disabled="loading" class="btn btn-primary w-full">
           {{ loading ? 'Creating account...' : 'Create Account' }}
         </button>
       </form>
@@ -95,6 +99,7 @@ const password = ref('');
 const confirmPassword = ref('');
 const loading = ref(false);
 const error = ref('');
+const infoMessage = ref('');
 
 const handleRegister = async () => {
   error.value = '';
@@ -117,7 +122,12 @@ const handleRegister = async () => {
       email: email.value,
       password: password.value,
     });
-    router.push('/dashboard');
+    const pendingToken = sessionStorage.getItem('pendingInvitation');
+    if (pendingToken) {
+      router.push(`/invite/${pendingToken}`);
+    } else {
+      router.push('/dashboard');
+    }
   } catch (err: any) {
     error.value = err.response?.data?.error || 'Failed to register. Please try again.';
   } finally {
