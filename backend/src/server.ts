@@ -1,6 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 import authRoutes from './routes/authRoutes';
 import environmentRoutes from './routes/environmentRoutes';
 import personRoutes from './routes/personRoutes';
@@ -24,18 +26,68 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Family Expense Tracker API',
+}));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/environments', environmentRoutes);
 app.use('/api/people', personRoutes);
 app.use('/api/expenses', expenseRoutes);
 
-// Health check endpoint
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Returns the health status of the API
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Root endpoint
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API information
+ *     description: Returns basic API information and available endpoints
+ *     tags: [Info]
+ *     responses:
+ *       200:
+ *         description: API information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 version:
+ *                   type: string
+ *                 endpoints:
+ *                   type: object
+ *                 documentation:
+ *                   type: string
+ */
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Family Expense Tracker API',
@@ -46,6 +98,7 @@ app.get('/', (req: Request, res: Response) => {
       people: '/api/people',
       expenses: '/api/expenses',
     },
+    documentation: '/api-docs',
   });
 });
 
@@ -71,6 +124,7 @@ const startServer = async () => {
       console.log(`✓ Server is running on port ${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✓ API available at http://localhost:${PORT}`);
+      console.log(`✓ API Documentation available at http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     console.error('✗ Failed to start server:', error);
