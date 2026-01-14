@@ -1,10 +1,10 @@
 <template>
   <div class="card">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Add New Expense</h2>
-
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">{{ $t('expense.addNew') }}</h2>
+    
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
-        <label for="amount" class="label">Amount (€)</label>
+        <label for="amount" class="label">{{ $t('common.amount') }} (€)</label>
         <input
           id="amount"
           v-model="amount"
@@ -13,41 +13,61 @@
           min="0"
           required
           class="input"
-          placeholder="0.00" />
+          :placeholder="$t('expense.amountPlaceholder')"
+        />
       </div>
 
       <div>
-        <label for="description" class="label">Description</label>
-        <textarea
-          id="description"
-          v-model="description"
+        <label for="payer" class="label">{{ $t('expense.paidBy') }}</label>
+        <select
+          id="payer"
+          v-model="payerId"
           required
           class="input"
-          rows="2"
-          placeholder="What was this expense for?" />
-      </div>
-
-      <div>
-        <label for="payer" class="label">Paid By</label>
-        <select id="payer" v-model="payerId" required class="input">
-          <option value="" disabled>Select person</option>
-          <option v-for="person in people" :key="person.id" :value="person.id">
+        >
+          <option value="" disabled>{{ $t('expense.selectPerson') }}</option>
+          <option
+            v-for="person in people"
+            :key="person.id"
+            :value="person.id"
+          >
             {{ person.name }}
           </option>
         </select>
       </div>
 
       <div>
-        <label for="expenseDate" class="label">Date</label>
-        <input id="expenseDate" v-model="expenseDate" type="date" required class="input" />
+        <label for="description" class="label">{{ $t('common.description') }}</label>
+        <textarea
+          id="description"
+          v-model="description"
+          required
+          class="input"
+          rows="2"
+          :placeholder="$t('expense.descriptionPlaceholder')"/>
+      </div>
+
+      <div>
+        <label for="expenseDate" class="label">{{ $t('common.date') }}</label>
+        <input
+          id="expenseDate"
+          v-model="expenseDate"
+          type="date"
+          required
+          class="input"
+        />
       </div>
 
       <div v-if="error" class="text-red-600 text-sm">
         {{ error }}
       </div>
 
-      <button type="submit" :disabled="loading || !environmentId" class="btn btn-primary w-full">
-        {{ loading ? 'Adding...' : 'Add Expense' }}
+      <button
+        type="submit"
+        :disabled="loading || !environmentId"
+        class="btn btn-primary w-full"
+      >
+        {{ loading ? $t('expense.adding') : $t('expense.add') }}
       </button>
     </form>
   </div>
