@@ -1,22 +1,23 @@
 <template>
   <div class="card">
     <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-semibold text-gray-800">Current Expenses</h2>
+      <h2 class="text-lg font-semibold text-gray-800">{{ $t('expense.currentExpenses') }}</h2>
       <button
         v-if="expenses.length > 0"
         @click="handleComputeExpenses"
         :disabled="computing"
-        class="btn btn-primary">
-        {{ computing ? 'Computing...' : 'Compute & Export to Excel' }}
+        class="btn btn-primary"
+      >
+        {{ computing ? $t('expense.computing') : $t('expense.compute') }}
       </button>
     </div>
 
     <div v-if="loading" class="text-center py-8">
-      <div class="text-gray-500">Loading expenses...</div>
+      <div class="text-gray-500">{{ $t('expense.loadingExpenses') }}</div>
     </div>
 
     <div v-else-if="expenses.length === 0" class="text-center py-8">
-      <p class="text-gray-500">No expenses yet. Add your first expense above!</p>
+      <p class="text-gray-500">{{ $t('expense.noExpenses') }}</p>
     </div>
 
     <div v-else class="space-y-3">
@@ -28,11 +29,18 @@
           <div class="flex-1">
             <div class="flex items-baseline justify-between mb-1">
               <span class="text-xl font-bold text-gray-900">€{{ expense.amount }}</span>
-              <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">{{
-                formatDate(expense.expense_date)
-              }}</span>
+              <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                {{ formatDate(expense.expense_date)}}
+              </span>
             </div>
+            
             <p class="text-gray-600 text-sm leading-relaxed">{{ expense.description }}</p>
+            <!-- <p class="text-gray-700">{{ expense.description }}</p> -->
+            <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+              <span>{{ $t('expense.paidBy') }}: <span class="font-medium">{{ expense.payer_name }}</span></span>
+              <span>•</span>
+              <span>{{ $t('expense.registeredBy') }}: <span class="font-medium">{{ expense.registered_by_name }}</span></span>
+            </div>
           </div>
 
           <div class="relative ml-4">
@@ -64,7 +72,7 @@
 
       <div class="border-t-2 border-primary-500 pt-4 mt-4">
         <div class="flex justify-between items-center">
-          <span class="text-lg font-bold text-gray-800">Total:</span>
+          <span class="text-lg font-bold text-gray-800">{{ $t('common.total') }}:</span>
           <span class="text-2xl font-bold text-primary-600">€{{ calculateTotal() }}</span>
         </div>
       </div>
@@ -76,6 +84,7 @@
 import { ref } from 'vue';
 import { useExpenseStore } from '@/stores/expenseStore';
 import { Expense } from '@/types';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps<{
   expenses: Expense[];
@@ -85,6 +94,7 @@ const props = defineProps<{
 
 const expenseStore = useExpenseStore();
 const computing = ref(false);
+const { t } = useI18n();
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -100,29 +110,28 @@ const calculateTotal = () => {
 };
 
 const handleDeleteExpense = async (id: number) => {
-  if (!confirm('Are you sure you want to delete this expense?')) return;
+  if (!confirm(t('expense.deleteConfirm'))) return;
 
   try {
     await expenseStore.deleteExpense(id);
   } catch (error) {
     console.error('Failed to delete expense:', error);
-    alert('Failed to delete expense. Please try again.');
+    alert(t('expense.deleteFailed'));
   }
 };
 
 const handleComputeExpenses = async () => {
   if (!props.environmentId) return;
 
-  if (!confirm('This will generate an Excel file and archive all current expenses. Continue?'))
-    return;
+  if (!confirm(t('expense.computeConfirm'))) return;
 
   computing.value = true;
   try {
     await expenseStore.computeExpenses(props.environmentId);
-    alert('Expenses computed successfully! Check your downloads folder.');
+    alert(t('expense.computeSuccess'));
   } catch (error) {
     console.error('Failed to compute expenses:', error);
-    alert('Failed to compute expenses. Please try again.');
+    alert(t('expense.computeFailed'));
   } finally {
     computing.value = false;
   }
