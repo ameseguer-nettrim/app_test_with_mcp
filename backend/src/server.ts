@@ -1,6 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './config/swagger';
 import authRoutes from './routes/authRoutes';
 import environmentRoutes from './routes/environmentRoutes';
 import personRoutes from './routes/personRoutes';
@@ -24,6 +26,18 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Family Expense Tracker API',
+}));
+
+// Swagger JSON endpoint
+app.get('/api-docs.json', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/environments', environmentRoutes);
@@ -40,6 +54,7 @@ app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Family Expense Tracker API',
     version: '1.0.0',
+    documentation: '/api-docs',
     endpoints: {
       auth: '/api/auth',
       environments: '/api/environments',
@@ -71,6 +86,7 @@ const startServer = async () => {
       console.log(`✓ Server is running on port ${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✓ API available at http://localhost:${PORT}`);
+      console.log(`✓ API Documentation at http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     console.error('✗ Failed to start server:', error);
