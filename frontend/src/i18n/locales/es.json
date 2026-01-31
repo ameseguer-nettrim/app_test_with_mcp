@@ -1,0 +1,113 @@
+{
+  "common": {
+    "appName": "Gestor de Gastos Familiares",
+    "welcome": "Bienvenido",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "grandTotal": "Total General",
+    "date": "Fecha",
+    "amount": "Importe",
+    "description": "Descripción",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "password": "Contraseña"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "history": "Historial",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "login": {
+      "title": "Gestor de Gastos Familiares",
+      "subtitle": "Inicia sesión para gestionar tus gastos familiares",
+      "signIn": "Iniciar sesión",
+      "signingIn": "Iniciando sesión...",
+      "noAccount": "¿No tienes cuenta?",
+      "signUp": "Regístrate",
+      "emailPlaceholder": "tu@ejemplo.com",
+      "passwordPlaceholder": "••••••••"
+    },
+    "register": {
+      "title": "Crear Cuenta",
+      "subtitle": "Empieza a gestionar tus gastos familiares",
+      "createAccount": "Crear Cuenta",
+      "creatingAccount": "Creando cuenta...",
+      "haveAccount": "¿Ya tienes cuenta?",
+      "signIn": "Inicia sesión",
+      "namePlaceholder": "Juan Pérez",
+      "confirmPassword": "Confirmar Contraseña",
+      "passwordsNotMatch": "Las contraseñas no coinciden",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres"
+    }
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Gestiona tus gastos familiares",
+    "peopleInEnvironment": "Personas en este entorno"
+  },
+  "history": {
+    "title": "Historial de Gastos",
+    "subtitle": "Consulta tus gastos computados y archivados",
+    "computedExpenses": "Gastos Computados",
+    "computedOn": "Computado el",
+    "expensesCount": "{count} gasto(s)",
+    "noComputedExpenses": "No hay gastos computados todavía.",
+    "loadingHistory": "Cargando historial..."
+  },
+  "environment": {
+    "select": "Seleccionar Entorno",
+    "newEnvironment": "+ Nuevo Entorno",
+    "noEnvironments": "No tienes entornos todavía. ¡Crea uno para empezar!",
+    "loadingEnvironments": "Cargando entornos...",
+    "createNew": "Crear Nuevo Entorno",
+    "namePlaceholder": "ej: Casa Principal",
+    "descriptionPlaceholder": "Breve descripción de este entorno",
+    "descriptionLabel": "Descripción (opcional)",
+    "creating": "Creando..."
+  },
+  "expense": {
+    "addNew": "Añadir Nuevo Gasto",
+    "currentExpenses": "Gastos Actuales",
+    "noExpenses": "No hay gastos todavía. ¡Añade tu primer gasto arriba!",
+    "loadingExpenses": "Cargando gastos...",
+    "amountPlaceholder": "0.00",
+    "paidBy": "Pagado por",
+    "selectPerson": "Seleccionar persona",
+    "descriptionPlaceholder": "¿Para qué fue este gasto?",
+    "adding": "Añadiendo...",
+    "add": "Añadir Gasto",
+    "registeredBy": "Registrado por",
+    "computedBy": "Computado por",
+    "compute": "Computar y Exportar a Excel",
+    "computing": "Computando...",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar este gasto?",
+    "computeConfirm": "Esto generará un archivo Excel y archivará todos los gastos actuales. ¿Continuar?",
+    "computeSuccess": "¡Gastos computados con éxito! Revisa tu carpeta de descargas.",
+    "computeFailed": "Error al computar los gastos. Por favor, inténtalo de nuevo.",
+    "deleteFailed": "Error al eliminar el gasto. Por favor, inténtalo de nuevo."
+  },
+  "validation": {
+    "required": "Este campo es obligatorio",
+    "emailInvalid": "Correo electrónico inválido",
+    "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+    "passwordsNotMatch": "Las contraseñas no coinciden"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
+    "networkError": "Error de conexión. Verifica tu internet.",
+    "unauthorized": "No autorizado. Por favor, inicia sesión de nuevo.",
+    "notFound": "No encontrado",
+    "serverError": "Error del servidor. Inténtalo más tarde."
+  }
+}

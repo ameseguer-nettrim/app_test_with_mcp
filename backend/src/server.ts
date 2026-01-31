@@ -6,6 +6,7 @@ import environmentRoutes from './routes/environmentRoutes';
 import personRoutes from './routes/personRoutes';
 import expenseRoutes from './routes/expenseRoutes';
 import db from './config/database';
+import invitationRoutes from './routes/invitationRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +16,32 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+//TODO: CORS
+/**
+ * const allowedOrigins = [
+  'http://localhost:5173',          // Desarrollo local
+  'https://tu-app.vercel.app',      // Tu URL de producción en Vercel
+  /\.vercel\.app$/                  // Permite cualquier preview de Vercel (opcional pero útil)
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir peticiones sin origen (como Postman o herramientas de servidor)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.some(allowed => 
+      typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+    )) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Necesario si en el futuro decides usar cookies
+}));
+*/
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -29,6 +56,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/environments', environmentRoutes);
 app.use('/api/people', personRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/invitations', invitationRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
