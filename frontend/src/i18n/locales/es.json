@@ -35,7 +35,7 @@
       "signingIn": "Iniciando sesión...",
       "noAccount": "¿No tienes cuenta?",
       "signUp": "Regístrate",
-      "emailPlaceholder": "tu@ejemplo.com",
+      "emailPlaceholder": "tu{'@'}ejemplo.com",
       "passwordPlaceholder": "••••••••"
     },
     "register": {
