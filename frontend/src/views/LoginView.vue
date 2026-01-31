@@ -3,8 +3,8 @@
     class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
     <div class="card max-w-md w-full">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-primary-600 mb-2">Family Expense Tracker</h1>
-        <p class="text-gray-600">Sign in to manage your family expenses</p>
+        <h1 class="text-3xl font-bold text-primary-600 mb-2">{{ $t('auth.login.title') }}</h1>
+        <p class="text-gray-600">{{ $t('auth.login.subtitle') }}</p>
       </div>
 
       <div
@@ -15,41 +15,47 @@
 
       <form @submit.prevent="handleLogin" class="space-y-4">
         <div>
-          <label for="email" class="label">Email</label>
+          <label for="email" class="label">{{ $t('common.email') }}</label>
           <input
             id="email"
             v-model="email"
             type="email"
             required
             class="input"
-            placeholder="you@example.com" />
+            :placeholder="$t('auth.login.emailPlaceholder')"
+          />
         </div>
 
         <div>
-          <label for="password" class="label">Password</label>
+          <label for="password" class="label">{{ $t('common.password') }}</label>
           <input
             id="password"
             v-model="password"
             type="password"
             required
             class="input"
-            placeholder="••••••••" />
+            :placeholder="$t('auth.login.passwordPlaceholder')"
+          />
         </div>
 
         <div v-if="error" class="text-red-600 text-sm">
           {{ error }}
         </div>
 
-        <button type="submit" :disabled="loading" class="btn btn-primary w-full">
-          {{ loading ? 'Signing in...' : 'Sign In' }}
+        <button
+          type="submit"
+          :disabled="loading"
+          class="btn btn-primary w-full"
+        >
+          {{ loading ? $t('auth.login.signingIn') : $t('auth.login.signIn') }}
         </button>
       </form>
 
       <div class="mt-6 text-center">
         <p class="text-gray-600">
-          Don't have an account?
+          {{ $t('auth.login.noAccount') }}
           <router-link to="/register" class="text-primary-600 hover:text-primary-700 font-medium">
-            Sign up
+            {{ $t('auth.login.signUp') }}
           </router-link>
         </p>
       </div>

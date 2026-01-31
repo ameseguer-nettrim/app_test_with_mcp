@@ -4,8 +4,8 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p class="text-gray-600 mt-1">Manage your family expenses</p>
+        <h1 class="text-3xl font-bold text-gray-800">{{ $t('dashboard.title') }}</h1>
+        <p class="text-gray-600 mt-1">{{ $t('dashboard.subtitle') }}</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -15,7 +15,7 @@
 
           <div v-if="currentEnvironment" class="card mt-6">
             <EnvironmentInvitation :environment-id="currentEnvironment.id" />
-            <h3 class="text-md font-semibold text-gray-800 mb-3">People in this environment</h3>
+            <h3 class="text-md font-semibold text-gray-800 mb-3">{{ $t('dashboard.peopleInEnvironment') }}</h3>
             <div class="space-y-2">
               <div
                 v-for="person in currentEnvironmentPeople"

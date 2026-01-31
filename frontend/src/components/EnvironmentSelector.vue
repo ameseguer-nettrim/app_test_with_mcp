@@ -1,21 +1,21 @@
 <template>
   <div class="card">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-gray-800">Select Environment</h2>
+      <h2 class="text-lg font-semibold text-gray-800">{{ $t('environment.select') }}</h2>
       <button
         @click="showCreateModal = true"
         class="btn btn-primary text-sm"
       >
-        + New Environment
+        {{ $t('environment.newEnvironment') }}
       </button>
     </div>
 
     <div v-if="environmentStore.loading" class="text-center py-4">
-      <div class="text-gray-500">Loading environments...</div>
+      <div class="text-gray-500">{{ $t('environment.loadingEnvironments') }}</div>
     </div>
 
     <div v-else-if="environmentStore.environments.length === 0" class="text-center py-8">
-      <p class="text-gray-500 mb-4">No environments yet. Create one to get started!</p>
+      <p class="text-gray-500 mb-4">{{ $t('environment.noEnvironments') }}</p>
     </div>
 
     <div v-else class="space-y-2">
@@ -34,29 +34,29 @@
     <!-- Create Environment Modal -->
     <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
       <div class="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 class="text-xl font-bold text-gray-800 mb-4">Create New Environment</h3>
+        <h3 class="text-xl font-bold text-gray-800 mb-4">{{ $t('environment.createNew') }}</h3>
         
         <form @submit.prevent="handleCreateEnvironment" class="space-y-4">
           <div>
-            <label for="envName" class="label">Name</label>
+            <label for="envName" class="label">{{ $t('common.name') }}</label>
             <input
               id="envName"
               v-model="newEnvName"
               type="text"
               required
               class="input"
-              placeholder="e.g., Main Home"
+              :placeholder="$t('environment.namePlaceholder')"
             />
           </div>
 
           <div>
-            <label for="envDescription" class="label">Description (optional)</label>
+            <label for="envDescription" class="label">{{ $t('environment.descriptionLabel') }}</label>
             <textarea
               id="envDescription"
               v-model="newEnvDescription"
               class="input"
               rows="3"
-              placeholder="Brief description of this environment"
+              :placeholder="$t('environment.descriptionPlaceholder')"
             />
           </div>
 
@@ -70,14 +70,14 @@
               @click="closeCreateModal"
               class="btn btn-secondary flex-1"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button
               type="submit"
               :disabled="creating"
               class="btn btn-primary flex-1"
             >
-              {{ creating ? 'Creating...' : 'Create' }}
+              {{ creating ? $t('environment.creating') : $t('common.create') }}
             </button>
           </div>
         </form>
