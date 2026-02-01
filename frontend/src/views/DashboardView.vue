@@ -1,68 +1,42 @@
 <template>
-  <div class="min-h-screen bg-gray-50 pb-20 md:pb-8"> <NavBar />
+  <div class="min-h-screen bg-gray-50 pb-10">
+    <NavBar />
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-      <div class="mb-8 md:mb-10 text-center md:text-left">
-        <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
-          {{ $t('dashboard.title') }}
-        </h1>
-        <p class="text-sm md:text-base text-gray-500 mt-2">
-          {{ $t('dashboard.subtitle') }}
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <div class="lg:col-span-1 space-y-6">
-          <section>
-            <EnvironmentSelector @environment-selected="handleEnvironmentSelected" />
-          </section>
+        <div class="lg:col-span-1 order-first lg:order-2">
+          <AddExpenseForm
+            :environment-id="currentEnvironment?.id || null"
+            :people="currentEnvironmentPeople"
+            @expense-added="loadExpenses" 
+          />
+        </div>
 
-          <div v-if="currentEnvironment" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="lg:col-span-1 order-2 lg:order-1 space-y-6">
+          <EnvironmentSelector @environment-selected="handleEnvironmentSelected" />
+
+          <div v-if="currentEnvironment" class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
             <EnvironmentInvitation :environment-id="currentEnvironment.id" />
-            
-            <div class="mt-6">
-              <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                {{ $t('dashboard.peopleInEnvironment') }}
-              </h3>
-              <div class="flex flex-wrap gap-2 md:flex-col md:space-y-2">
-                <div
-                  v-for="person in currentEnvironmentPeople"
-                  :key="person.id"
-                  class="flex items-center space-x-2 bg-gray-50 md:bg-transparent px-3 py-1.5 md:px-0 rounded-full text-sm text-gray-700 border border-gray-100 md:border-0"
-                >
-                  <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
-                    <svg class="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                    </svg>
-                  </div>
-                  <span class="font-medium">{{ person.name }}</span>
-                </div>
+            <div class="mt-4 pt-4 border-t border-gray-50">
+              <h3 class="text-xs font-bold text-gray-400 uppercase mb-3 tracking-widest">En este grupo</h3>
+              <div class="flex flex-wrap gap-2">
+                <span v-for="p in currentEnvironmentPeople" :key="p.id" 
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                  {{ p.name }}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="lg:col-span-1 order-first lg:order-none">
-          <div class="sticky top-20"> <AddExpenseForm
-              :environment-id="currentEnvironment?.id || null"
-              :people="currentEnvironmentPeople"
-              @expense-added="loadExpenses" 
-            />
-          </div>
-        </div>
-
-        <div class="lg:col-span-1">
-          <div class="flex items-center justify-between mb-4 lg:hidden">
-             <h2 class="text-lg font-bold text-gray-800 italic">Últimos movimientos</h2>
-          </div>
+        <div class="lg:col-span-1 order-3">
           <ExpenseList
             :expenses="expenses"
             :loading="expenseStore.loading"
             :environment-id="currentEnvironment?.id || null" 
           />
         </div>
-
       </div>
     </main>
   </div>
