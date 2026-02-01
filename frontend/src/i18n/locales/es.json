@@ -20,7 +20,8 @@
     "description": "Descripción",
     "name": "Nombre",
     "email": "Correo electrónico",
-    "password": "Contraseña"
+    "password": "Contraseña",
+    "changeLanguage": "Cambiar idioma"
   },
   "nav": {
     "dashboard": "Panel",

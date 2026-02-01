@@ -1,55 +1,44 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50 pb-10">
     <NavBar />
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">{{ $t('dashboard.title') }}</h1>
-        <p class="text-gray-600 mt-1">{{ $t('dashboard.subtitle') }}</p>
-      </div>
-
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Column: Environment Selector -->
-        <div class="lg:col-span-1">
+        
+        <div class="lg:col-span-1 order-first lg:order-2">
+          <AddExpenseForm
+            :environment-id="currentEnvironment?.id || null"
+            :people="currentEnvironmentPeople"
+            @expense-added="loadExpenses" 
+          />
+        </div>
+
+        <div class="lg:col-span-1 order-2 lg:order-1 space-y-6">
           <EnvironmentSelector @environment-selected="handleEnvironmentSelected" />
 
-          <div v-if="currentEnvironment" class="card mt-6">
+          <div v-if="currentEnvironment" class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
             <EnvironmentInvitation :environment-id="currentEnvironment.id" />
-            <h3 class="text-md font-semibold text-gray-800 mb-3">{{ $t('dashboard.peopleInEnvironment') }}</h3>
-            <div class="space-y-2">
-              <div
-                v-for="person in currentEnvironmentPeople"
-                :key="person.id"
-                class="flex items-center space-x-2 text-gray-700">
-                <svg class="w-5 h-5 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clip-rule="evenodd" />
-                </svg>
-                <span>{{ person.name }}</span>
+            <div class="mt-4 pt-4 border-t border-gray-50">
+              <h3 class="text-xs font-bold text-gray-400 uppercase mb-3 tracking-widest">En este grupo</h3>
+              <div class="flex flex-wrap gap-2">
+                <span v-for="p in currentEnvironmentPeople" :key="p.id" 
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                  {{ p.name }}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Middle Column: Add Expense Form -->
-        <div class="lg:col-span-1">
-          <AddExpenseForm
-            :environment-id="currentEnvironment?.id || null"
-            :people="currentEnvironmentPeople"
-            @expense-added="loadExpenses" />
-        </div>
-
-        <!-- Right Column: Expense List -->
-        <div class="lg:col-span-1">
+        <div class="lg:col-span-1 order-3">
           <ExpenseList
             :expenses="expenses"
             :loading="expenseStore.loading"
-            :environment-id="currentEnvironment?.id || null" />
+            :environment-id="currentEnvironment?.id || null" 
+          />
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
