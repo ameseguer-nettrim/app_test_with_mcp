@@ -1,55 +1,70 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <NavBar />
+  <div class="min-h-screen bg-gray-50 pb-20 md:pb-8"> <NavBar />
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">{{ $t('dashboard.title') }}</h1>
-        <p class="text-gray-600 mt-1">{{ $t('dashboard.subtitle') }}</p>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <div class="mb-8 md:mb-10 text-center md:text-left">
+        <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
+          {{ $t('dashboard.title') }}
+        </h1>
+        <p class="text-sm md:text-base text-gray-500 mt-2">
+          {{ $t('dashboard.subtitle') }}
+        </p>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Column: Environment Selector -->
-        <div class="lg:col-span-1">
-          <EnvironmentSelector @environment-selected="handleEnvironmentSelected" />
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-1 space-y-6">
+          <section>
+            <EnvironmentSelector @environment-selected="handleEnvironmentSelected" />
+          </section>
 
-          <div v-if="currentEnvironment" class="card mt-6">
+          <div v-if="currentEnvironment" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <EnvironmentInvitation :environment-id="currentEnvironment.id" />
-            <h3 class="text-md font-semibold text-gray-800 mb-3">{{ $t('dashboard.peopleInEnvironment') }}</h3>
-            <div class="space-y-2">
-              <div
-                v-for="person in currentEnvironmentPeople"
-                :key="person.id"
-                class="flex items-center space-x-2 text-gray-700">
-                <svg class="w-5 h-5 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clip-rule="evenodd" />
-                </svg>
-                <span>{{ person.name }}</span>
+            
+            <div class="mt-6">
+              <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                {{ $t('dashboard.peopleInEnvironment') }}
+              </h3>
+              <div class="flex flex-wrap gap-2 md:flex-col md:space-y-2">
+                <div
+                  v-for="person in currentEnvironmentPeople"
+                  :key="person.id"
+                  class="flex items-center space-x-2 bg-gray-50 md:bg-transparent px-3 py-1.5 md:px-0 rounded-full text-sm text-gray-700 border border-gray-100 md:border-0"
+                >
+                  <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                    </svg>
+                  </div>
+                  <span class="font-medium">{{ person.name }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Middle Column: Add Expense Form -->
-        <div class="lg:col-span-1">
-          <AddExpenseForm
-            :environment-id="currentEnvironment?.id || null"
-            :people="currentEnvironmentPeople"
-            @expense-added="loadExpenses" />
+        <div class="lg:col-span-1 order-first lg:order-none">
+          <div class="sticky top-20"> <AddExpenseForm
+              :environment-id="currentEnvironment?.id || null"
+              :people="currentEnvironmentPeople"
+              @expense-added="loadExpenses" 
+            />
+          </div>
         </div>
 
-        <!-- Right Column: Expense List -->
         <div class="lg:col-span-1">
+          <div class="flex items-center justify-between mb-4 lg:hidden">
+             <h2 class="text-lg font-bold text-gray-800 italic">Últimos movimientos</h2>
+          </div>
           <ExpenseList
             :expenses="expenses"
             :loading="expenseStore.loading"
-            :environment-id="currentEnvironment?.id || null" />
+            :environment-id="currentEnvironment?.id || null" 
+          />
         </div>
+
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
