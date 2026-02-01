@@ -48,7 +48,7 @@
                     <div class="flex justify-between items-start">
                       <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-1">
-                          <span class="text-lg font-semibold text-gray-800">{{`€${expense.amount.toFixed(2)}`}}</span>
+                          <span class="text-lg font-semibold text-gray-800">{{`€${expense.amount}`}}</span>
                           <span class="text-sm text-gray-500">{{ formatDate(expense.expense_date) }}</span>
                         </div>
                         <p class="text-gray-700">{{ expense.description }}</p>
