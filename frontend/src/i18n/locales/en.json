@@ -20,7 +20,8 @@
     "description": "Description",
     "name": "Name",
     "email": "Email",
-    "password": "Password"
+    "password": "Password",
+    "changeLanguage": "Change Language"
   },
   "nav": {
     "dashboard": "Dashboard",
