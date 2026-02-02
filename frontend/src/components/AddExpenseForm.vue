@@ -9,7 +9,7 @@
           id="amount"
           v-model="amount"
           type="number"
-          step="1"
+          step="0.01"
           min="0"
           required
           class="input"
