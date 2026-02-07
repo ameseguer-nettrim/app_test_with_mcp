@@ -110,5 +110,13 @@
     "unauthorized": "No autorizado. Por favor, inicia sesión de nuevo.",
     "notFound": "No encontrado",
     "serverError": "Error del servidor. Inténtalo más tarde."
+  },
+  "invitation": {
+    "inviteMembers": "Invita a tu familia y amigos",
+    "shareLink": "Comparte este enlace para añadir miembros a este entorno.",
+    "linkCopied": "✓ Enlace copiado al portapapeles. Válido por 48h.",
+    "copyInviteLink": "Copiar Enlace de Invitación",
+    "generating": "Generando...",
+    "errorOccurred": "Error al generar el enlace"
   }
 }

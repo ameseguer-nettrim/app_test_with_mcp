@@ -1,21 +1,21 @@
 <template>
   <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-6">
     <h3 class="text-sm font-bold text-primary-800 uppercase tracking-wider mb-2">
-      Invite your family and friends
+      {{ $t('invitation.inviteMembers') }}
     </h3>
-    <p class="text-xs text-primary-600 mb-4">Share this link to add members to this environment.</p>
+    <p class="text-xs text-primary-600 mb-4">{{ $t('invitation.shareLink') }}</p>
 
     <div class="flex gap-2">
       <button
         @click="generateInviteLink"
         :disabled="generating"
         class="btn btn-primary flex-1 text-sm py-2">
-        {{ generating ? 'Generating...' : 'Copy Invite Link' }}
+        {{ generating ? $t('invitation.generating') : $t('invitation.copyInviteLink') }}
       </button>
     </div>
 
     <p v-if="copied" class="text-[10px] text-green-600 mt-2 font-medium">
-      ✓ Link copied to clipboard! Valid for 48h.
+      {{ $t('invitation.linkCopied') }}
     </p>
   </div>
 </template>
@@ -23,6 +23,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import api from '@/services/api';
+import i18n from '@/i18n';
 
 const props = defineProps<{ environmentId: number }>();
 const generating = ref(false);
@@ -40,7 +41,7 @@ const generateInviteLink = async () => {
     copied.value = true;
     setTimeout(() => (copied.value = false), 3000);
   } catch (error) {
-    alert('Error generating link');
+    alert(i18n.global.t('invitation.errorOccurred'));
   } finally {
     generating.value = false;
   }

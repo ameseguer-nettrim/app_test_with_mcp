@@ -110,5 +110,13 @@
     "unauthorized": "Unauthorized. Please sign in again.",
     "notFound": "Not found",
     "serverError": "Server error. Please try again later."
+  },
+  "invitation": {
+    "inviteMembers": "Invite your family and friends",
+    "shareLink": "Share this link to add members to this environment.",
+    "linkCopied": "✓ Link copied to clipboard! Valid for 48h.",
+    "copyInviteLink": "Copy Invite Link",
+    "generating": "Generating...",
+    "errorOccurred": "Error generating link"
   }
 }
