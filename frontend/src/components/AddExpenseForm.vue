@@ -10,7 +10,6 @@
           v-model="amount"
           type="number"
           step="0.01"
-          min="0"
           required
           class="input"
           :placeholder="$t('expense.amountPlaceholder')"
