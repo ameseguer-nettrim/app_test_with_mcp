@@ -118,5 +118,21 @@
     "copyInviteLink": "Copiar Enlace de Invitación",
     "generating": "Generando...",
     "errorOccurred": "Error al generar el enlace"
+  },
+  "categories": {
+    "title": "Categorías de gasto",
+    "add": "Añadir",
+    "namePlaceholder": "Nombre de la categoría",
+    "color": "Color",
+    "deleteConfirm": "¿Borrar categoría?",
+    "edit": "Editar",
+    "save": "Guardar",
+    "delete": "Borrar",
+    "actions": "Acciones",
+    "name": "Nombre",
+    "nav": "Categorías",
+    "createError": "Error creando categoría",
+    "updateError": "Error actualizando categoría",
+    "deleteError": "Error borrando categoría"
   }
 }

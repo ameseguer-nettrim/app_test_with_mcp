@@ -118,5 +118,21 @@
     "copyInviteLink": "Copy Invite Link",
     "generating": "Generating...",
     "errorOccurred": "Error generating link"
+  },
+   "categories": {
+    "title": "Expense categories",
+    "add": "Add",
+    "namePlaceholder": "Category name",
+    "color": "Color",
+    "deleteConfirm": "Delete category?",
+    "edit": "Edit",
+    "save": "Save",
+    "delete": "Delete",
+    "actions": "Actions",
+    "name": "Name",
+    "nav": "Categories",
+    "createError": "Error creating category",
+    "updateError": "Error updating category",
+    "deleteError": "Error deleting category"
   }
 }

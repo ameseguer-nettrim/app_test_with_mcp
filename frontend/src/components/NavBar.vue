@@ -72,18 +72,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import LanguageSelector from './LanguageSelector.vue';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const isMenuOpen = ref(false);
 
+const currentEnvironmentId = computed(() => useEnvironmentStore().currentEnvironment?.id || null);
+
+
 const navLinks = [
   { path: '/dashboard', label: 'nav.dashboard' },
+  { path: `/environments/${currentEnvironmentId.value}/categories`, label: 'categories.nav' },
   { path: '/history', label: 'nav.history' }
 ];
 
