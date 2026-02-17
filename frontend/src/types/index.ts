@@ -70,3 +70,17 @@ export interface CreateEnvironmentData {
   name: string;
   description?: string;
 }
+
+export interface Person {
+  id: number;
+  name: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  icon?: string;
+  color?: string;
+  created_at?: Date;
+  environment_id?: number;
+}

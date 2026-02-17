@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import db from '../config/database';
 import { RowDataPacket } from 'mysql2';
 import { AuthRequest } from '../middleware/auth';
@@ -20,7 +20,7 @@ export const listByEnvironment = async (req: AuthRequest, res: Response) => {
     return res.status(403).json({ message: 'Access denied' });
 
   const [rows]: any = await db.query(
-    'SELECT id, name, color, created_at FROM expense_categories WHERE environment_id = ? ORDER BY name',
+    'SELECT id, name, color, icon, created_at FROM expense_categories WHERE environment_id = ? ORDER BY name',
     [environmentId],
   );
   res.json(rows);

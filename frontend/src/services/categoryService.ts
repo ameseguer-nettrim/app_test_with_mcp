@@ -1,14 +1,6 @@
 import { AxiosResponse } from 'axios';
 import api from './api';
-
-export interface Category {
-  id: number;
-  environment_id?: number;
-  name: string;
-  color?: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
+import { Category } from '@/types';
 
 export interface CreateCategoryPayload {
   name: string;
