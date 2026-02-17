@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
     name: 'invitation',
     component: () => import('@/views/InvitationView.vue'),
   },
+  {
+    path: '/environments/:id/categories',
+    name: 'Categories',
+    component: () => import('@/views/CategoriesView.vue'),
+    meta: { requiresAuth: true }
+  }
 ];
 
 const router = createRouter({

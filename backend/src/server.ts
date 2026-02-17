@@ -7,6 +7,7 @@ import personRoutes from './routes/personRoutes';
 import expenseRoutes from './routes/expenseRoutes';
 import db from './config/database';
 import invitationRoutes from './routes/invitationRoutes';
+import categoryRoutes from './routes/categoryRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -57,6 +58,7 @@ app.use('/api/environments', environmentRoutes);
 app.use('/api/people', personRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/invitations', invitationRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {

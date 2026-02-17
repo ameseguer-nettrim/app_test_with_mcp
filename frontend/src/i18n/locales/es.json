@@ -96,7 +96,10 @@
     "computeConfirm": "Esto generará un archivo Excel y archivará todos los gastos actuales. ¿Continuar?",
     "computeSuccess": "¡Gastos computados con éxito! Revisa tu carpeta de descargas.",
     "computeFailed": "Error al computar los gastos. Por favor, inténtalo de nuevo.",
-    "deleteFailed": "Error al eliminar el gasto. Por favor, inténtalo de nuevo."
+    "deleteFailed": "Error al eliminar el gasto. Por favor, inténtalo de nuevo.",
+    "others": "Otros",
+    "selectCategory": "Seleccionar categoría",
+    "category": "Categoría del gasto"
   },
   "validation": {
     "required": "Este campo es obligatorio",
@@ -118,5 +121,21 @@
     "copyInviteLink": "Copiar Enlace de Invitación",
     "generating": "Generando...",
     "errorOccurred": "Error al generar el enlace"
+  },
+  "categories": {
+    "title": "Categorías de gasto",
+    "add": "Añadir",
+    "namePlaceholder": "Nombre de la categoría",
+    "color": "Color",
+    "deleteConfirm": "¿Borrar categoría?",
+    "edit": "Editar",
+    "save": "Guardar",
+    "delete": "Borrar",
+    "actions": "Acciones",
+    "name": "Nombre",
+    "nav": "Categorías",
+    "createError": "Error creando categoría",
+    "updateError": "Error actualizando categoría",
+    "deleteError": "Error borrando categoría"
   }
 }

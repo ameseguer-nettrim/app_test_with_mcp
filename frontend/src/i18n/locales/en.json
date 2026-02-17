@@ -75,7 +75,9 @@
     "namePlaceholder": "e.g., Main Home",
     "descriptionPlaceholder": "Brief description of this environment",
     "descriptionLabel": "Description (optional)",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "others": "Others",
+    "selectCategory": "Select category"
   },
   "expense": {
     "addNew": "Add New Expense",
@@ -96,7 +98,8 @@
     "computeConfirm": "This will generate an Excel file and archive all current expenses. Continue?",
     "computeSuccess": "Expenses computed successfully! Check your downloads folder.",
     "computeFailed": "Failed to compute expenses. Please try again.",
-    "deleteFailed": "Failed to delete expense. Please try again."
+    "deleteFailed": "Failed to delete expense. Please try again.",
+    "category": "Category"
   },
   "validation": {
     "required": "This field is required",
@@ -118,5 +121,21 @@
     "copyInviteLink": "Copy Invite Link",
     "generating": "Generating...",
     "errorOccurred": "Error generating link"
+  },
+  "categories": {
+    "title": "Expense categories",
+    "add": "Add",
+    "namePlaceholder": "Category name",
+    "color": "Color",
+    "deleteConfirm": "Delete category?",
+    "edit": "Edit",
+    "save": "Save",
+    "delete": "Delete",
+    "actions": "Actions",
+    "name": "Name",
+    "nav": "Categories",
+    "createError": "Error creating category",
+    "updateError": "Error updating category",
+    "deleteError": "Error deleting category"
   }
 }
