@@ -2,12 +2,7 @@
   <div class="card">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-lg font-semibold text-gray-800">{{ $t('expense.currentExpenses') }}</h2>
-      <button
-        v-if="expenses.length > 0"
-        @click="handleComputeExpenses"
-        :disabled="computing"
-        class="btn btn-primary"
-      >
+      <button v-if="expenses.length > 0" @click="handleComputeExpenses" :disabled="computing" class="btn btn-primary">
         {{ computing ? $t('expense.computing') : $t('expense.compute') }}
       </button>
     </div>
@@ -21,38 +16,28 @@
     </div>
 
     <div v-else class="space-y-3">
-      <div
-        v-for="expense in expenses"
-        :key="expense.id"
+      <div v-for="expense in expenses" :key="expense.id"
         class="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
         <div class="p-4 flex justify-between items-start">
           <div class="flex-1">
             <div class="flex items-baseline justify-between mb-1">
               <span class="text-xl font-bold text-gray-900">€{{ expense.amount }}</span>
               <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                {{ formatDate(expense.expense_date)}}
+                {{ formatDate(expense.expense_date) }}
               </span>
             </div>
-            
+
             <p class="text-gray-600 text-sm leading-relaxed">{{ expense.description }}</p>
-            <!-- <p class="text-gray-700">{{ expense.description }}</p> -->
             <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
               <span>{{ $t('expense.paidBy') }}: <span class="font-medium">{{ expense.payer_name }}</span></span>
-              <span>•</span>
-              <span>{{ $t('expense.registeredBy') }}: <span class="font-medium">{{ expense.registered_by_name }}</span></span>
             </div>
           </div>
 
           <div class="relative ml-4">
-            <button
-              @click="handleDeleteExpense(expense.id)"
-              class="text-red-600 hover:text-red-700 ml-4"
+            <button @click="handleDeleteExpense(expense.id)" class="text-red-600 hover:text-red-700 ml-4"
               title="Delete expense">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
