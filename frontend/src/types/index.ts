@@ -15,6 +15,7 @@ export interface Expense {
   id: number;
   amount: number;
   description: string;
+  category?: Category;
   expense_date: string;
   payer_id: number;
   payer_name: string;

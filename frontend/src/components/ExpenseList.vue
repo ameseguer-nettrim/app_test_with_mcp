@@ -28,6 +28,15 @@
             </div>
 
             <p class="text-gray-600 text-sm leading-relaxed">{{ expense.description }}</p>
+            <div v-if="expense.category" class="flex items-center mt-2">
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" :style="{
+                backgroundColor: expense.category.color + '20',
+                color: expense.category.color
+              }">
+                <i :class="['mr-1', expense.category.icon]"></i>
+                {{ expense.category.name }}
+              </span>
+            </div>
             <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
               <span>{{ $t('expense.paidBy') }}: <span class="font-medium">{{ expense.payer_name }}</span></span>
             </div>

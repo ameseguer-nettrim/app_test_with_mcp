@@ -33,7 +33,7 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   async function deleteExpense(id: number) {
-    const expense = expenses.value.find(e => e.id === id);
+    const expense = expenses.value.find((e) => e.id === id);
     await expenseService.deleteExpense(id);
     if (expense) {
       await fetchExpenses(expense.environment_id);
@@ -42,20 +42,20 @@ export const useExpenseStore = defineStore('expense', () => {
 
   async function computeExpenses(environmentId: number) {
     const blob = await expenseService.computeExpenses(environmentId);
-    
+
     // Create download link
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     link.download = `expenses_${environmentId}_${timestamp}.xlsx`;
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     // Refresh expenses list
     await fetchExpenses(environmentId);
   }

@@ -18,7 +18,7 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
     // Check if user has access to this environment
     const [access] = await db.query<RowDataPacket[]>(
       'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, req.person!.personId]
+      [environment_id, req.person!.personId],
     );
 
     if (access.length === 0) {
@@ -29,16 +29,33 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
     const [rows] = await db.query<RowDataPacket[]>(
       `SELECT e.*, 
               payer.name as payer_name,
-              registered.name as registered_by_name
+              registered.name as registered_by_name,
+              cat.id as category_id,
+              cat.name as category_name,
+              cat.icon as category_icon,
+              cat.color as category_color
        FROM expenses e
        INNER JOIN people payer ON e.payer_id = payer.id
        INNER JOIN people registered ON e.registered_by_id = registered.id
+       LEFT JOIN expense_categories cat ON e.category_id = cat.id
        WHERE e.environment_id = ?
        ORDER BY e.expense_date DESC, e.created_at DESC`,
-      [environment_id]
+      [environment_id],
     );
 
-    res.json({ expenses: rows });
+    res.json({
+      expenses: rows.map((r) => ({
+        ...r,
+        category: r.category_id
+          ? {
+              id: r.category_id,
+              name: r.category_name,
+              icon: r.category_icon,
+              color: r.category_color,
+            }
+          : undefined,
+      })),
+    });
   } catch (error) {
     console.error('Get expenses error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -48,8 +65,8 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
 export const createExpense = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { amount, description, expense_date, payer_id, environment_id } = req.body;
-
-    if (!amount || !description || !expense_date || !payer_id || !environment_id) {
+    console.log('description:', description);
+    if (!amount || !expense_date || !payer_id || !environment_id) {
       res.status(400).json({ error: 'All fields are required' });
       return;
     }
@@ -57,7 +74,7 @@ export const createExpense = async (req: AuthRequest, res: Response): Promise<vo
     // Check if user has access to this environment
     const [access] = await db.query<RowDataPacket[]>(
       'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, req.person!.personId]
+      [environment_id, req.person!.personId],
     );
 
     if (access.length === 0) {
@@ -68,7 +85,7 @@ export const createExpense = async (req: AuthRequest, res: Response): Promise<vo
     // Check if payer is in the environment
     const [payerAccess] = await db.query<RowDataPacket[]>(
       'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, payer_id]
+      [environment_id, payer_id],
     );
 
     if (payerAccess.length === 0) {
@@ -79,7 +96,7 @@ export const createExpense = async (req: AuthRequest, res: Response): Promise<vo
     const [result] = await db.query<ResultSetHeader>(
       `INSERT INTO expenses (amount, description, expense_date, payer_id, registered_by_id, environment_id) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [amount, description, expense_date, payer_id, req.person!.personId, environment_id]
+      [amount, description, expense_date, payer_id, req.person!.personId, environment_id],
     );
 
     res.status(201).json({
@@ -103,7 +120,7 @@ export const updateExpense = async (req: AuthRequest, res: Response): Promise<vo
        FROM expenses e
        INNER JOIN environment_person ep ON e.environment_id = ep.environment_id
        WHERE e.id = ? AND ep.person_id = ?`,
-      [id, req.person!.personId]
+      [id, req.person!.personId],
     );
 
     if (expenseRows.length === 0) {
@@ -115,7 +132,7 @@ export const updateExpense = async (req: AuthRequest, res: Response): Promise<vo
     if (payer_id) {
       const [payerAccess] = await db.query<RowDataPacket[]>(
         'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-        [expenseRows[0].environment_id, payer_id]
+        [expenseRows[0].environment_id, payer_id],
       );
 
       if (payerAccess.length === 0) {
@@ -151,10 +168,7 @@ export const updateExpense = async (req: AuthRequest, res: Response): Promise<vo
 
     values.push(id);
 
-    await db.query(
-      `UPDATE expenses SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
+    await db.query(`UPDATE expenses SET ${updates.join(', ')} WHERE id = ?`, values);
 
     res.json({ message: 'Expense updated successfully' });
   } catch (error) {
@@ -173,7 +187,7 @@ export const deleteExpense = async (req: AuthRequest, res: Response): Promise<vo
        FROM expenses e
        INNER JOIN environment_person ep ON e.environment_id = ep.environment_id
        WHERE e.id = ? AND ep.person_id = ?`,
-      [id, req.person!.personId]
+      [id, req.person!.personId],
     );
 
     if (expenseRows.length === 0) {
@@ -202,7 +216,7 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
     // Check if user has access to this environment
     const [access] = await db.query<RowDataPacket[]>(
       'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, req.person!.personId]
+      [environment_id, req.person!.personId],
     );
 
     if (access.length === 0) {
@@ -225,7 +239,7 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
          INNER JOIN people registered ON e.registered_by_id = registered.id
          WHERE e.environment_id = ?
          ORDER BY e.expense_date ASC`,
-        [environment_id]
+        [environment_id],
       );
 
       if (expenses.length === 0) {
@@ -249,15 +263,12 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
             expense.registered_by_id,
             expense.environment_id,
             req.person!.personId,
-          ]
+          ],
         );
       }
 
       // Delete computed expenses from expenses table
-      await connection.query(
-        'DELETE FROM expenses WHERE environment_id = ?',
-        [environment_id]
-      );
+      await connection.query('DELETE FROM expenses WHERE environment_id = ?', [environment_id]);
 
       await connection.commit();
 
@@ -315,7 +326,7 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const filename = `expenses_${environment_id}_${timestamp}.xlsx`;
       const exportsDir = path.join(__dirname, '../../exports');
-      
+
       // Create exports directory if it doesn't exist
       if (!fs.existsSync(exportsDir)) {
         fs.mkdirSync(exportsDir, { recursive: true });
@@ -358,7 +369,7 @@ export const getComputedExpenses = async (req: AuthRequest, res: Response): Prom
     // Check if user has access to this environment
     const [access] = await db.query<RowDataPacket[]>(
       'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, req.person!.personId]
+      [environment_id, req.person!.personId],
     );
 
     if (access.length === 0) {
@@ -377,7 +388,7 @@ export const getComputedExpenses = async (req: AuthRequest, res: Response): Prom
        INNER JOIN people computed ON ce.computed_by_id = computed.id
        WHERE ce.environment_id = ?
        ORDER BY ce.computed_at DESC, ce.expense_date DESC`,
-      [environment_id]
+      [environment_id],
     );
 
     res.json({ computed_expenses: rows });

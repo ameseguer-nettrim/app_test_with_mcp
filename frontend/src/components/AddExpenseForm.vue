@@ -102,6 +102,7 @@ import { useExpenseStore } from '@/stores/expenseStore';
 import i18n from '@/i18n';
 import { useCategoryStore } from '@/stores/categoriesStore';
 import { Person } from '@/types';
+import { useAuthStore } from '@/stores/authStore';
 
 const props = defineProps<{
   environmentId: number | null;
@@ -157,7 +158,6 @@ watch(
   { immediate: true },
 );
 
-// computed: add the "Otros" option at the end
 const categoriesWithOthers = computed(() => {
   // map to include an internal option key for the template
   const mapped = categories.value.map(c => ({ ...c, _optionKey: c.id as number | string }));
@@ -218,7 +218,7 @@ const handleSubmit = async () => {
       payer_id: payerId.value as number,
       environment_id: props.environmentId,
       category_id: selectedCategoryKey.value === OTHER_KEY ? null : (selectedCategoryKey.value as number),
-      // optionally: mark "is_other": selectedCategoryKey === OTHER_KEY
+      registered_by_id: useAuthStore().person!.id,
     };
 
     await expenseStore.createExpense(payload);
