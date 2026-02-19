@@ -27,7 +27,6 @@ export const useCategoryStore = defineStore('category', {
 
       try {
         const res = await categoriesService.list(environmentId);
-        console.log('Fetched categories:', res.data);
         this.categories = res.data;
       } catch (err: any) {
         this.error = err.message || 'Error loading categories';
