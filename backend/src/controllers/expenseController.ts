@@ -64,9 +64,9 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
 
 export const createExpense = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { amount, description, expense_date, payer_id, environment_id } = req.body;
-    console.log('description:', description);
-    if (!amount || !expense_date || !payer_id || !environment_id) {
+    const { amount, description, expense_date, payer_id, environment_id, category_id } = req.body;
+
+    if (!amount || !category_id || !expense_date || !payer_id || !environment_id) {
       res.status(400).json({ error: 'All fields are required' });
       return;
     }
@@ -94,9 +94,17 @@ export const createExpense = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO expenses (amount, description, expense_date, payer_id, registered_by_id, environment_id) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [amount, description, expense_date, payer_id, req.person!.personId, environment_id],
+      `INSERT INTO expenses (amount, description, expense_date, payer_id, registered_by_id, environment_id, category_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        amount,
+        description,
+        expense_date,
+        payer_id,
+        req.person!.personId,
+        environment_id,
+        category_id,
+      ],
     );
 
     res.status(201).json({
@@ -112,7 +120,7 @@ export const createExpense = async (req: AuthRequest, res: Response): Promise<vo
 export const updateExpense = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { amount, description, expense_date, payer_id } = req.body;
+    const { amount, description, expense_date, payer_id, category_id } = req.body;
 
     // Check if expense exists and user has access
     const [expenseRows] = await db.query<RowDataPacket[]>(
@@ -148,10 +156,6 @@ export const updateExpense = async (req: AuthRequest, res: Response): Promise<vo
       updates.push('amount = ?');
       values.push(amount);
     }
-    if (description !== undefined) {
-      updates.push('description = ?');
-      values.push(description);
-    }
     if (expense_date !== undefined) {
       updates.push('expense_date = ?');
       values.push(expense_date);
@@ -159,6 +163,10 @@ export const updateExpense = async (req: AuthRequest, res: Response): Promise<vo
     if (payer_id !== undefined) {
       updates.push('payer_id = ?');
       values.push(payer_id);
+    }
+    if (category_id !== undefined) {
+      updates.push('category_id = ?');
+      values.push(category_id);
     }
 
     if (updates.length === 0) {
