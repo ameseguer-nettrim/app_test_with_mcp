@@ -73,8 +73,8 @@
         </div>
       </div>
 
-      <!-- description: only visible when "Otros" is selected -->
-      <div v-if="isOthersSelected">
+      <!-- description: only required when "Others" is selected -->
+      <div>
         <label for="description" class="label">{{ $t('common.description') }}</label>
         <textarea id="description" v-model="description" :required="isOthersSelected" class="input" rows="2"
           :placeholder="$t('expense.descriptionPlaceholder')" />
@@ -213,7 +213,7 @@ const handleSubmit = async () => {
     // build payload
     const payload: any = {
       amount: parseFloat(amount.value),
-      description: isOthersSelected.value ? description.value : '', // description only useful for Others
+      description: description.value ?? '',
       expense_date: expenseDate.value,
       payer_id: payerId.value as number,
       environment_id: props.environmentId,
