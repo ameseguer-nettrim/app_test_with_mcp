@@ -42,9 +42,7 @@
               </template>
             </div>
 
-            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
+            <i class="fa-solid fa-chevron-down" />
           </button>
 
           <!-- dropdown list -->
@@ -64,9 +62,7 @@
               </div>
 
               <template v-if="cat._optionKey === selectedCategoryKey">
-                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
+                <i class="fa-solid fa-circle-check text-green-500" />
               </template>
             </li>
           </ul>

@@ -31,10 +31,8 @@
           </div>
 
           <button @click="isMenuOpen = !isMenuOpen" class="md:hidden p-2 rounded-md text-gray-400">
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path v-if="!isMenuOpen" d="M4 6h16M4 12h16m-7 6h7" stroke-width="2" stroke-linecap="round" />
-              <path v-else d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round" />
-            </svg>
+            <i v-if="!isMenuOpen" class="fa-solid fa-bars" />
+            <i v-else class="fa-solid fa-xmark" />
           </button>
         </div>
       </div>
