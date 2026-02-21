@@ -136,6 +136,11 @@
     "nav": "Categories",
     "createError": "Error creating category",
     "updateError": "Error updating category",
-    "deleteError": "Error deleting category"
+    "deleteError": "Error deleting category",
+    "manage": "Manage your expense categories"
+  },
+  "icons": {
+    "title": "Available icon list",
+    "placeholder": "Search icon..."
   }
 }

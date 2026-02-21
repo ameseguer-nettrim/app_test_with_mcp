@@ -136,6 +136,11 @@
     "nav": "Categorías",
     "createError": "Error creando categoría",
     "updateError": "Error actualizando categoría",
-    "deleteError": "Error borrando categoría"
+    "deleteError": "Error borrando categoría",
+    "manage": "Gestiona las categorías de tus gastos"
+  },
+  "icons": {
+    "title": "Listado de iconos disponibles",
+    "placeholder": "Buscar icono..."
   }
 }

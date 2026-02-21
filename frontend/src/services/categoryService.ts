@@ -5,11 +5,13 @@ import { Category } from '@/types';
 export interface CreateCategoryPayload {
   name: string;
   color?: string | null;
+  icon?: string;
 }
 
 export interface UpdateCategoryPayload {
   name: string;
   color?: string | null;
+  icon?: string;
 }
 
 export const categoriesService = {

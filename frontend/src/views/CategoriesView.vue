@@ -3,7 +3,7 @@
   <div class="max-w-md mx-auto p-4 sm:max-w-2xl lg:max-w-4xl">
     <header class="mb-8">
       <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">{{ t('categories.title') }}</h1>
-      <p class="text-gray-500 text-sm mt-1">Gestiona las etiquetas de tus gastos</p>
+      <p class="text-gray-500 text-sm mt-1">{{ t('categories.manage') }}</p>
     </header>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-8">
@@ -16,16 +16,18 @@
 
         <div class="flex items-center gap-3">
           <div>
-            <label class="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">{{ t('categories.color') }}</label>
             <div class="relative flex items-center">
               <input v-model="newColor" type="color" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
               <div :style="{ backgroundColor: newColor }"
                 class="w-12 h-12 rounded-xl border-2 border-white shadow-sm ring-1 ring-gray-200"></div>
             </div>
           </div>
-
+          <!-- Icon -->
+          <div class="flex-1">
+            <IconPicker v-model="newIcon" />
+          </div>
           <button @click="createCategory"
-            class="flex-1 sm:flex-none h-12 px-6 mt-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-transform active:scale-95 shadow-lg shadow-blue-200">
+            class="flex-1 sm:flex-none h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-transform active:scale-95 shadow-lg shadow-blue-200">
             {{ t('categories.add') }}
           </button>
         </div>
@@ -38,16 +40,20 @@
         <template v-if="editingId !== cat.id">
           <div class="flex items-center gap-3">
             <div :style="{ backgroundColor: cat.color || '#cbd5e1' }"
-              class="w-4 h-4 rounded-full ring-4 ring-opacity-20 shadow-inner" :class="`ring-[${cat.color}]`"></div>
-            <span class="font-semibold text-gray-700">{{ cat.name }}</span>
+              class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm">
+              <i :class="`fa-solid fa-${cat.icon || 'tag'}`"></i>
+            </div>
+            <span class="font-semibold text-gray-700">
+              {{ cat.name }}
+            </span>
           </div>
 
           <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button @click="startEdit(cat)" class="p-2 hover:bg-blue-50 text-blue-600 rounded-lg">
-              <span class="text-xs font-bold">Edit</span>
+              <span class="text-xs font-bold">{{ t('common.edit') }}</span>
             </button>
             <button @click="deleteCategory(cat.id)" class="p-2 hover:bg-red-50 text-red-600 rounded-lg">
-              <span class="text-xs font-bold">Del</span>
+              <span class="text-xs font-bold">{{ t('common.delete') }}</span>
             </button>
           </div>
         </template>
@@ -56,11 +62,16 @@
           <div class="flex flex-col w-full gap-2">
             <div class="flex gap-2">
               <input v-model="editColor" type="color" class="w-10 h-10 p-0 border-none bg-transparent" />
+              <IconPicker v-model="editIcon" />
               <input v-model="editName" class="flex-1 border-b-2 border-blue-500 focus:outline-none p-1" />
             </div>
             <div class="flex justify-end gap-2">
-              <button @click="editingId = null" class="text-xs text-gray-400 font-bold uppercase">Cancelar</button>
-              <button @click="saveEdit(cat.id)" class="text-xs text-blue-600 font-bold uppercase">Guardar</button>
+              <button @click="editingId = null" class="text-xs text-gray-400 font-bold uppercase">
+                {{ t('common.cancel') }}
+              </button>
+              <button @click="saveEdit(cat.id)" class="text-xs text-blue-600 font-bold uppercase">
+                {{ t('common.save') }}
+              </button>
             </div>
           </div>
         </template>
@@ -75,6 +86,7 @@ import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { categoriesService } from '../services/categoryService';
 import NavBar from '../components/NavBar.vue';
+import IconPicker from '../components/IconPicker.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -83,7 +95,6 @@ const environmentId = Number(route.params.id);
 const categories = ref([] as any[]);
 const newName = ref('');
 
-// --- Lógica de Colores Automáticos ---
 const defaultColors = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
   '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'
@@ -94,7 +105,8 @@ const getNextRandomColor = () => {
 };
 
 const newColor = ref(getNextRandomColor());
-// -------------------------------------
+const newIcon = ref<string>('tag');
+const editIcon = ref<string>('tag');
 
 const editingId = ref<number | null>(null);
 const editName = ref('');
@@ -117,11 +129,11 @@ async function createCategory() {
   try {
     const res = await categoriesService.create(environmentId, {
       name: newName.value.trim(),
-      color: newColor.value
+      color: newColor.value,
+      icon: newIcon.value
     });
     categories.value.push(res.data);
 
-    // Resetear campos y asignar un nuevo color aleatorio para la siguiente
     newName.value = '';
     newColor.value = getNextRandomColor();
   } catch (err: any) {
@@ -134,11 +146,12 @@ function startEdit(cat: any) {
   editingId.value = cat.id;
   editName.value = cat.name;
   editColor.value = cat.color || '#ffffff';
+  editIcon.value = cat.icon || 'tag';
 }
 
 async function saveEdit(id: number) {
   try {
-    await categoriesService.update(id, { name: editName.value.trim(), color: editColor.value });
+    await categoriesService.update(id, { name: editName.value.trim(), color: editColor.value, icon: editIcon.value });
     await load();
     editingId.value = null;
   } catch (err: any) {

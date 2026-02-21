@@ -30,7 +30,7 @@ export const createCategoryByEnvironment = async (req: AuthRequest, res: Respons
   const environmentId = Number(req.params.id);
   // const userId = (req as any).user.id;
   const userId = req.person!.personId;
-  const { name, color } = req.body;
+  const { name, color, icon } = req.body;
 
   // Check if user has access to this environment
   const [access] = await db.query<RowDataPacket[]>(
@@ -49,12 +49,12 @@ export const createCategoryByEnvironment = async (req: AuthRequest, res: Respons
     return res.status(403).json({ message: 'Access denied' });
   try {
     const [result]: any = await db.query(
-      'INSERT INTO expense_categories (environment_id, name, color) VALUES (?, ?, ?)',
-      [environmentId, name.trim(), color || null],
+      'INSERT INTO expense_categories (environment_id, name, color, icon) VALUES (?, ?, ?, ?)',
+      [environmentId, name.trim(), color || null, icon || null],
     );
     const insertId = result.insertId;
     const [rows]: any = await db.query(
-      'SELECT id, name, color, created_at FROM expense_categories WHERE id = ?',
+      'SELECT id, name, color, icon, created_at FROM expense_categories WHERE id = ?',
       [insertId],
     );
     res.status(201).json(rows[0]);
@@ -70,7 +70,7 @@ export const createCategoryByEnvironment = async (req: AuthRequest, res: Respons
 export const update = async (req: AuthRequest, res: Response) => {
   const categoryId = Number(req.params.id);
   const userId = req.person!.personId;
-  const { name, color } = req.body;
+  const { name, color, icon } = req.body;
 
   const [catRows]: any = await db.query(
     'SELECT environment_id FROM expense_categories WHERE id = ?',
@@ -84,13 +84,14 @@ export const update = async (req: AuthRequest, res: Response) => {
     return res.status(403).json({ message: 'Access denied' });
 
   try {
-    await db.query('UPDATE expense_categories SET name = ?, color = ? WHERE id = ?', [
+    await db.query('UPDATE expense_categories SET name = ?, color = ?, icon = ? WHERE id = ?', [
       name.trim(),
       color || null,
+      icon || null,
       categoryId,
     ]);
     const [rows]: any = await db.query(
-      'SELECT id, name, color, created_at FROM expense_categories WHERE id = ?',
+      'SELECT id, name, color, icon, created_at FROM expense_categories WHERE id = ?',
       [categoryId],
     );
     res.json(rows[0]);

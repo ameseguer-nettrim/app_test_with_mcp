@@ -29,15 +29,26 @@
 
             <div class="flex justify-between items-center mt-4">
               <div v-if="expense.category" class="flex items-center">
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" :style="{
-                  backgroundColor: expense.category.color + '20',
-                  color: expense.category.color
-                }">
-                  <i :class="['mr-1', expense.category.icon]"></i>
-                  {{ expense.category.name }}
-                </span>
+                <div class="flex gap-3" :class="expense.description ? 'items-start' : 'items-center'">
+                  <div v-if="expense.category"
+                    class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" :style="{
+                      backgroundColor: expense.category.color + '15',
+                      color: expense.category.color
+                    }">
+                    <i :class="`fa-solid fa-${expense.category.icon || 'tag'}`" />
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <div v-if="expense.category" class="text-sm font-medium text-gray-800">
+                      {{ expense.category.name }}
+                    </div>
+
+                    <p v-if="expense.description" class="text-sm text-gray-500 leading-snug">
+                      {{ expense.description }}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p class="text-gray-600 text-sm leading-relaxed">{{ expense.description }}</p>
             </div>
           </div>
 
