@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { PoolConnection } from 'mysql2/promise';
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
@@ -38,7 +39,7 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
        INNER JOIN people payer ON e.payer_id = payer.id
        INNER JOIN people registered ON e.registered_by_id = registered.id
        LEFT JOIN expense_categories cat ON e.category_id = cat.id
-       WHERE e.environment_id = ?
+       WHERE e.environment_id = ? AND e.is_computed = false
        ORDER BY e.expense_date DESC, e.created_at DESC`,
       [environment_id],
     );
@@ -214,20 +215,21 @@ export const deleteExpense = async (req: AuthRequest, res: Response): Promise<vo
 
 export const computeExpenses = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { environment_id } = req.body;
+    const { environment_id, excelTexts } = req.body;
 
     if (!environment_id) {
       res.status(400).json({ error: 'environment_id is required' });
       return;
     }
 
-    // Check if user has access to this environment
-    const [access] = await db.query<RowDataPacket[]>(
-      'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, req.person!.personId],
-    );
+    if (!excelTexts) {
+      res.status(400).json({ error: 'excelTexts is required' });
+      return;
+    }
 
-    if (access.length === 0) {
+    // Check if user has access to this environment
+    const hasAccess = await validateUserAccessToEnvironment(environment_id, req.person!.personId);
+    if (!hasAccess) {
       res.status(403).json({ error: 'Access denied to this environment' });
       return;
     }
@@ -237,18 +239,8 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
     try {
       await connection.beginTransaction();
 
-      // Get all non-computed expenses for this environment
-      const [expenses] = await connection.query<RowDataPacket[]>(
-        `SELECT e.*, 
-                payer.name as payer_name,
-                registered.name as registered_by_name
-         FROM expenses e
-         INNER JOIN people payer ON e.payer_id = payer.id
-         INNER JOIN people registered ON e.registered_by_id = registered.id
-         WHERE e.environment_id = ?
-         ORDER BY e.expense_date ASC`,
-        [environment_id],
-      );
+      // Fetch non-computed expenses
+      const expenses = await fetchNonComputedExpenses(connection, environment_id);
 
       if (expenses.length === 0) {
         await connection.rollback();
@@ -256,103 +248,33 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
         return;
       }
 
-      // Move expenses to computed_expenses table
-      for (const expense of expenses) {
-        await connection.query(
-          `INSERT INTO computed_expenses 
-           (expense_id, amount, description, expense_date, payer_id, registered_by_id, environment_id, computed_by_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            expense.id,
-            expense.amount,
-            expense.description,
-            expense.expense_date,
-            expense.payer_id,
-            expense.registered_by_id,
-            expense.environment_id,
-            req.person!.personId,
-          ],
-        );
-      }
-
-      // Delete computed expenses from expenses table
-      await connection.query('DELETE FROM expenses WHERE environment_id = ?', [environment_id]);
+      // Mark expenses as computed with flag and metadata
+      await connection.query(
+        `UPDATE expenses
+      SET is_computed = true,
+      computed_at = NOW(),
+      computed_by_id = ?
+      WHERE environment_id = ? AND is_computed = false`,
+        [req.person!.personId, environment_id],
+      );
 
       await connection.commit();
 
-      // Generate Excel file
+      // Generate workbook
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Expenses');
 
-      // Define columns
-      worksheet.columns = [
-        { header: 'Date', key: 'expense_date', width: 15 },
-        { header: 'Amount', key: 'amount', width: 12 },
-        { header: 'Description', key: 'description', width: 40 },
-        { header: 'Paid By', key: 'payer_name', width: 20 },
-        { header: 'Registered By', key: 'registered_by_name', width: 20 },
-      ];
+      // Fetch environment members for column headers
+      const members = await fetchEnvironmentMembers(connection, environment_id);
 
-      // Style header
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' },
-      };
+      // Group expenses by month and create sheets
+      const expensesByMonth = groupExpensesByMonth(expenses);
+      createMonthlySheets(workbook, expensesByMonth, members, excelTexts);
 
-      // Add data
-      expenses.forEach((expense) => {
-        worksheet.addRow({
-          expense_date: new Date(expense.expense_date).toLocaleDateString(),
-          amount: parseFloat(expense.amount),
-          description: expense.description,
-          payer_name: expense.payer_name,
-          registered_by_name: expense.registered_by_name,
-        });
-      });
+      // Create details sheet (last sheet)
+      createDetailsSheet(workbook, expenses, excelTexts);
 
-      // Add total row
-      const totalRow = worksheet.addRow({
-        expense_date: '',
-        amount: expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0),
-        description: 'TOTAL',
-        payer_name: '',
-        registered_by_name: '',
-      });
-      totalRow.font = { bold: true };
-      totalRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFFFD700' },
-      };
-
-      // Format amount column as currency
-      worksheet.getColumn('amount').numFmt = '€#,##0.00';
-
-      // Generate filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `expenses_${environment_id}_${timestamp}.xlsx`;
-      const exportsDir = path.join(__dirname, '../../exports');
-
-      // Create exports directory if it doesn't exist
-      if (!fs.existsSync(exportsDir)) {
-        fs.mkdirSync(exportsDir, { recursive: true });
-      }
-
-      const filepath = path.join(exportsDir, filename);
-
-      // Write file
-      await workbook.xlsx.writeFile(filepath);
-
-      // Send file as response
-      res.download(filepath, filename, (err) => {
-        if (err) {
-          console.error('Error downloading file:', err);
-        }
-        // Delete file after download
-        fs.unlinkSync(filepath);
-      });
+      // Generate and send Excel
+      await generateAndSendExcel(res, workbook, environment_id);
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -386,22 +308,287 @@ export const getComputedExpenses = async (req: AuthRequest, res: Response): Prom
     }
 
     const [rows] = await db.query<RowDataPacket[]>(
-      `SELECT ce.*, 
+      `SELECT e.*, 
               payer.name as payer_name,
               registered.name as registered_by_name,
-              computed.name as computed_by_name
-       FROM computed_expenses ce
-       INNER JOIN people payer ON ce.payer_id = payer.id
-       INNER JOIN people registered ON ce.registered_by_id = registered.id
-       INNER JOIN people computed ON ce.computed_by_id = computed.id
-       WHERE ce.environment_id = ?
-       ORDER BY ce.computed_at DESC, ce.expense_date DESC`,
+              computed.name as computed_by_name,
+              cat.id as category_id,
+              cat.name as category_name,
+              cat.icon as category_icon,
+              cat.color as category_color
+       FROM expenses e
+       INNER JOIN people payer ON e.payer_id = payer.id
+       INNER JOIN people registered ON e.registered_by_id = registered.id
+       INNER JOIN people computed ON e.computed_by_id = computed.id
+       LEFT JOIN expense_categories cat ON e.category_id = cat.id
+       WHERE e.environment_id = ? AND e.is_computed = true
+       ORDER BY e.computed_at DESC, e.expense_date DESC`,
       [environment_id],
     );
 
-    res.json({ computed_expenses: rows });
+    res.json({
+      computed_expenses: rows.map((r) => ({
+        ...r,
+        category: r.category_id
+          ? {
+              id: r.category_id,
+              name: r.category_name,
+              icon: r.category_icon,
+              color: r.category_color,
+            }
+          : undefined,
+      })),
+    });
   } catch (error) {
     console.error('Get computed expenses error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+};
+
+// ===== HELPER FUNCTIONS AND TYPES FOR COMPUTE EXPENSES =====
+
+interface ExpenseRow extends RowDataPacket {
+  id: number;
+  amount: string;
+  expense_date: string;
+  payer_id: number;
+  payer_name: string;
+  registered_by_name: string;
+  category_name: string | null;
+  description: string;
+}
+
+interface EnvironmentMember extends RowDataPacket {
+  person_id: number;
+  name: string;
+}
+
+interface ExcelMessages {
+  summary: string;
+  details: string;
+  category: string;
+  amount: string;
+  percentage: string;
+  date: string;
+  description: string;
+  paidBy: string;
+  total: string;
+}
+
+interface MonthlyExpenseData {
+  month: string; // Format: YYYY-MM
+  expenses: ExpenseRow[];
+}
+
+const validateUserAccessToEnvironment = async (
+  environment_id: string | number,
+  person_id: number,
+): Promise<boolean> => {
+  const [access] = await db.query<RowDataPacket[]>(
+    'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
+    [environment_id, person_id],
+  );
+  return access.length > 0;
+};
+
+const fetchNonComputedExpenses = async (
+  connection: PoolConnection,
+  environment_id: string | number,
+): Promise<ExpenseRow[]> => {
+  const [expenses] = await connection.query<ExpenseRow[]>(
+    `SELECT e.*, 
+            e.payer_id,
+            payer.name as payer_name,
+            registered.name as registered_by_name,
+            cat.id as category_id,
+            cat.name as category_name
+     FROM expenses e
+     INNER JOIN people payer ON e.payer_id = payer.id
+     INNER JOIN people registered ON e.registered_by_id = registered.id
+     LEFT JOIN expense_categories cat ON e.category_id = cat.id
+     WHERE e.environment_id = ? AND e.is_computed = false
+     ORDER BY e.expense_date ASC`,
+    [environment_id],
+  );
+  return expenses;
+};
+
+const fetchEnvironmentMembers = async (
+  connection: PoolConnection,
+  environment_id: string | number,
+): Promise<EnvironmentMember[]> => {
+  const [members] = await connection.query<EnvironmentMember[]>(
+    `SELECT p.id as person_id, p.name
+     FROM people p
+     INNER JOIN environment_person ep ON p.id = ep.person_id
+     WHERE ep.environment_id = ?
+     ORDER BY p.name ASC`,
+    [environment_id],
+  );
+  return members;
+};
+
+const groupExpensesByMonth = (expenses: ExpenseRow[]): MonthlyExpenseData[] => {
+  const grouped = new Map<string, ExpenseRow[]>();
+
+  expenses.forEach((expense) => {
+    const dateObj = new Date(expense.expense_date);
+    const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+
+    if (!grouped.has(month)) {
+      grouped.set(month, []);
+    }
+    grouped.get(month)!.push(expense);
+  });
+
+  // Sort by month (oldest to newest)
+  return Array.from(grouped.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, expenses]) => ({ month, expenses }));
+};
+
+const createMonthlySheets = (
+  workbook: ExcelJS.Workbook,
+  monthlyData: MonthlyExpenseData[],
+  members: EnvironmentMember[],
+  messages: ExcelMessages,
+): void => {
+  monthlyData.forEach((data) => {
+    const sheet = workbook.addWorksheet(data.month);
+
+    // Build column headers: Category + Member columns
+    const columnHeaders = [messages.category, ...members.map((m) => m.name)];
+    sheet.columns = columnHeaders.map((header, index) => ({
+      header,
+      key: index === 0 ? 'category' : `member_${members[index - 1].person_id}`,
+      width: index === 0 ? 20 : 15,
+    }));
+
+    // Style header
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' },
+    };
+
+    // Build data structure: Map<category, Map<person_id, amount>>
+    const categoryData = new Map<string, Map<number, number>>();
+
+    data.expenses.forEach((expense) => {
+      const categoryKey = expense.category_name || 'Uncategorized';
+      const payerId = expense.payer_id;
+      const amount = parseFloat(expense.amount);
+
+      if (!categoryData.has(categoryKey)) {
+        categoryData.set(categoryKey, new Map());
+      }
+      const personMap = categoryData.get(categoryKey)!;
+      personMap.set(payerId, (personMap.get(payerId) || 0) + amount);
+    });
+
+    // Add rows for each category (sorted alphabetically)
+    const memberIds = members.map((m) => m.person_id);
+    Array.from(categoryData.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .forEach(([category, personAmounts]) => {
+        const row: any = { category };
+        memberIds.forEach((memberId) => {
+          row[`member_${memberId}`] = personAmounts.get(memberId) || '';
+        });
+        sheet.addRow(row);
+      });
+
+    // Add total row
+    const totalRow: any = { category: messages.total };
+    memberIds.forEach((memberId) => {
+      let total = 0;
+      categoryData.forEach((personAmounts) => {
+        total += personAmounts.get(memberId) || 0;
+      });
+      totalRow[`member_${memberId}`] = total > 0 ? total : '';
+    });
+    const totalRowNum = sheet.addRow(totalRow);
+    totalRowNum.font = { bold: true, size: 11 };
+    totalRowNum.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFD700' },
+    };
+
+    // Format amount columns
+    for (let i = 2; i <= columnHeaders.length; i++) {
+      const cell = sheet.getColumn(i);
+      cell.numFmt = '€#,##0.00';
+    }
+  });
+};
+
+const createDetailsSheet = (
+  workbook: ExcelJS.Workbook,
+  expenses: ExpenseRow[],
+  messages: ExcelMessages,
+): void => {
+  const detailsSheet = workbook.addWorksheet(messages.details);
+
+  detailsSheet.columns = [
+    { header: messages.category, key: 'category', width: 20 },
+    { header: messages.date, key: 'date', width: 12 },
+    { header: messages.description, key: 'description', width: 35 },
+    { header: messages.amount, key: 'amount', width: 12 },
+    { header: messages.paidBy, key: 'payer', width: 18 },
+  ];
+
+  // Style header
+  const headerRow = detailsSheet.getRow(1);
+  headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4472C4' },
+  };
+
+  // Add data rows grouped and sorted by category and date
+  expenses.forEach((expense) => {
+    detailsSheet.addRow({
+      category: expense.category_name || 'Uncategorized',
+      date: new Date(expense.expense_date).toLocaleDateString(),
+      description: expense.description,
+      amount: parseFloat(expense.amount),
+      payer: expense.payer_name,
+    });
+  });
+
+  // Format amount column
+  detailsSheet.getColumn('amount').numFmt = '€#,##0.00';
+};
+
+const generateAndSendExcel = async (
+  res: Response,
+  workbook: ExcelJS.Workbook,
+  environment_id: string | number,
+): Promise<void> => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  const filename = `expenses_${environment_id}_${timestamp}.xlsx`;
+  const exportsDir = path.join(__dirname, '../../exports');
+
+  // Create exports directory if it doesn't exist
+  if (!fs.existsSync(exportsDir)) {
+    fs.mkdirSync(exportsDir, { recursive: true });
+  }
+
+  const filepath = path.join(exportsDir, filename);
+
+  // Write file
+  await workbook.xlsx.writeFile(filepath);
+
+  // Send file as response
+  res.download(filepath, filename, (err) => {
+    if (err) {
+      console.error('Error downloading file:', err);
+    }
+    // Delete file after download
+    fs.unlinkSync(filepath);
+  });
 };

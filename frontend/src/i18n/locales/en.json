@@ -142,5 +142,16 @@
   "icons": {
     "title": "Available icon list",
     "placeholder": "Search icon..."
+  },
+  "excel": {
+    "summary": "Summary",
+    "details": "Details",
+    "category": "Category",
+    "amount": "Amount",
+    "percentage": "% of Total",
+    "date": "Date",
+    "description": "Description",
+    "paidBy": "Paid By",
+    "total": "TOTAL"
   }
 }
