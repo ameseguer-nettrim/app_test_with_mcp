@@ -263,11 +263,14 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
       // Generate workbook
       const workbook = new ExcelJS.Workbook();
 
-      // Calculate totals by category
-      const { categoryTotals, grandTotal } = calculateCategoryTotals(expenses);
+      // Fetch environment members for column headers
+      const members = await fetchEnvironmentMembers(connection, environment_id);
 
-      // Create sheets
-      createSummarySheet(workbook, categoryTotals, grandTotal, excelTexts);
+      // Group expenses by month and create sheets
+      const expensesByMonth = groupExpensesByMonth(expenses);
+      createMonthlySheets(workbook, expensesByMonth, members, excelTexts);
+
+      // Create details sheet (last sheet)
       createDetailsSheet(workbook, expenses, excelTexts);
 
       // Generate and send Excel
@@ -348,15 +351,16 @@ interface ExpenseRow extends RowDataPacket {
   id: number;
   amount: string;
   expense_date: string;
+  payer_id: number;
   payer_name: string;
   registered_by_name: string;
   category_name: string | null;
   description: string;
 }
 
-interface CategoryTotal {
-  total: number;
-  categoryName: string | null;
+interface EnvironmentMember extends RowDataPacket {
+  person_id: number;
+  name: string;
 }
 
 interface ExcelMessages {
@@ -369,6 +373,11 @@ interface ExcelMessages {
   description: string;
   paidBy: string;
   total: string;
+}
+
+interface MonthlyExpenseData {
+  month: string; // Format: YYYY-MM
+  expenses: ExpenseRow[];
 }
 
 const validateUserAccessToEnvironment = async (
@@ -388,6 +397,7 @@ const fetchNonComputedExpenses = async (
 ): Promise<ExpenseRow[]> => {
   const [expenses] = await connection.query<ExpenseRow[]>(
     `SELECT e.*, 
+            e.payer_id,
             payer.name as payer_name,
             registered.name as registered_by_name,
             cat.id as category_id,
@@ -397,83 +407,122 @@ const fetchNonComputedExpenses = async (
      INNER JOIN people registered ON e.registered_by_id = registered.id
      LEFT JOIN expense_categories cat ON e.category_id = cat.id
      WHERE e.environment_id = ? AND e.is_computed = false
-     ORDER BY cat.name ASC, e.expense_date ASC`,
+     ORDER BY e.expense_date ASC`,
     [environment_id],
   );
   return expenses;
 };
 
-const calculateCategoryTotals = (
-  expenses: ExpenseRow[],
-): { categoryTotals: Map<string, CategoryTotal>; grandTotal: number } => {
-  const categoryTotals = new Map<string, CategoryTotal>();
-  let grandTotal = 0;
-
-  expenses.forEach((expense) => {
-    const categoryKey = expense.category_name || 'Uncategorized';
-    const amount = parseFloat(expense.amount);
-    grandTotal += amount;
-
-    if (!categoryTotals.has(categoryKey)) {
-      categoryTotals.set(categoryKey, { total: 0, categoryName: expense.category_name });
-    }
-    const current = categoryTotals.get(categoryKey)!;
-    current.total += amount;
-  });
-
-  return { categoryTotals, grandTotal };
+const fetchEnvironmentMembers = async (
+  connection: PoolConnection,
+  environment_id: string | number,
+): Promise<EnvironmentMember[]> => {
+  const [members] = await connection.query<EnvironmentMember[]>(
+    `SELECT p.id as person_id, p.name
+     FROM people p
+     INNER JOIN environment_person ep ON p.id = ep.person_id
+     WHERE ep.environment_id = ?
+     ORDER BY p.name ASC`,
+    [environment_id],
+  );
+  return members;
 };
 
-const createSummarySheet = (
+const groupExpensesByMonth = (expenses: ExpenseRow[]): MonthlyExpenseData[] => {
+  const grouped = new Map<string, ExpenseRow[]>();
+
+  expenses.forEach((expense) => {
+    const dateObj = new Date(expense.expense_date);
+    const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+
+    if (!grouped.has(month)) {
+      grouped.set(month, []);
+    }
+    grouped.get(month)!.push(expense);
+  });
+
+  // Sort by month (oldest to newest)
+  return Array.from(grouped.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, expenses]) => ({ month, expenses }));
+};
+
+const createMonthlySheets = (
   workbook: ExcelJS.Workbook,
-  categoryTotals: Map<string, CategoryTotal>,
-  grandTotal: number,
+  monthlyData: MonthlyExpenseData[],
+  members: EnvironmentMember[],
   messages: ExcelMessages,
 ): void => {
-  const summarySheet = workbook.addWorksheet(messages.summary);
+  monthlyData.forEach((data) => {
+    const sheet = workbook.addWorksheet(data.month);
 
-  summarySheet.columns = [
-    { header: messages.category, key: 'category', width: 25 },
-    { header: messages.amount, key: 'amount', width: 15 },
-    { header: messages.percentage, key: 'percentage', width: 15 },
-  ];
+    // Build column headers: Category + Member columns
+    const columnHeaders = [messages.category, ...members.map((m) => m.name)];
+    sheet.columns = columnHeaders.map((header, index) => ({
+      header,
+      key: index === 0 ? 'category' : `member_${members[index - 1].person_id}`,
+      width: index === 0 ? 20 : 15,
+    }));
 
-  // Style header
-  const headerRow = summarySheet.getRow(1);
-  headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-  headerRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF4472C4' },
-  };
+    // Style header
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' },
+    };
 
-  // Add summary rows
-  Array.from(categoryTotals.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .forEach(([category, data]) => {
-      const percentage = grandTotal > 0 ? ((data.total / grandTotal) * 100).toFixed(2) : '0.00';
-      summarySheet.addRow({
-        category: category,
-        amount: data.total,
-        percentage: `${percentage}%`,
-      });
+    // Build data structure: Map<category, Map<person_id, amount>>
+    const categoryData = new Map<string, Map<number, number>>();
+
+    data.expenses.forEach((expense) => {
+      const categoryKey = expense.category_name || 'Uncategorized';
+      const payerId = expense.payer_id;
+      const amount = parseFloat(expense.amount);
+
+      if (!categoryData.has(categoryKey)) {
+        categoryData.set(categoryKey, new Map());
+      }
+      const personMap = categoryData.get(categoryKey)!;
+      personMap.set(payerId, (personMap.get(payerId) || 0) + amount);
     });
 
-  // Add total row
-  const totalRow = summarySheet.addRow({
-    category: messages.total,
-    amount: grandTotal,
-    percentage: '100%',
-  });
-  totalRow.font = { bold: true, size: 11 };
-  totalRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFFFD700' },
-  };
+    // Add rows for each category (sorted alphabetically)
+    const memberIds = members.map((m) => m.person_id);
+    Array.from(categoryData.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .forEach(([category, personAmounts]) => {
+        const row: any = { category };
+        memberIds.forEach((memberId) => {
+          row[`member_${memberId}`] = personAmounts.get(memberId) || '';
+        });
+        sheet.addRow(row);
+      });
 
-  // Format amount columns
-  summarySheet.getColumn('amount').numFmt = '€#,##0.00';
+    // Add total row
+    const totalRow: any = { category: messages.total };
+    memberIds.forEach((memberId) => {
+      let total = 0;
+      categoryData.forEach((personAmounts) => {
+        total += personAmounts.get(memberId) || 0;
+      });
+      totalRow[`member_${memberId}`] = total > 0 ? total : '';
+    });
+    const totalRowNum = sheet.addRow(totalRow);
+    totalRowNum.font = { bold: true, size: 11 };
+    totalRowNum.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFD700' },
+    };
+
+    // Format amount columns
+    for (let i = 2; i <= columnHeaders.length; i++) {
+      const cell = sheet.getColumn(i);
+      cell.numFmt = '€#,##0.00';
+    }
+  });
 };
 
 const createDetailsSheet = (
