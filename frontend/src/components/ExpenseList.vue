@@ -128,7 +128,19 @@ const handleComputeExpenses = async () => {
 
   computing.value = true;
   try {
-    await expenseStore.computeExpenses(props.environmentId);
+    const excelTexts = {
+      summary: t('excel.summary'),
+      details: t('excel.details'),
+      category: t('excel.category'),
+      amount: t('excel.amount'),
+      percentage: t('excel.percentage'),
+      date: t('excel.date'),
+      description: t('excel.description'),
+      paidBy: t('excel.paidBy'),
+      total: t('excel.total'),
+    };
+
+    await expenseStore.computeExpenses(props.environmentId, excelTexts);
     alert(t('expense.computeSuccess'));
   } catch (error) {
     console.error('Failed to compute expenses:', error);

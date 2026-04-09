@@ -142,5 +142,16 @@
   "icons": {
     "title": "Listado de iconos disponibles",
     "placeholder": "Buscar icono..."
+  },
+  "excel": {
+    "summary": "Resumen",
+    "details": "Detalles",
+    "category": "Categoría",
+    "amount": "Importe",
+    "percentage": "% del Total",
+    "date": "Fecha",
+    "description": "Descripción",
+    "paidBy": "Pagado por",
+    "total": "TOTAL"
   }
 }

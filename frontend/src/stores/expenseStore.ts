@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { expenseService } from '@/services/expenseService';
+import { expenseService, type ExcelTexts } from '@/services/expenseService';
 import { Expense, ComputedExpense, CreateExpenseData } from '@/types';
 
 export const useExpenseStore = defineStore('expense', () => {
@@ -40,8 +40,8 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  async function computeExpenses(environmentId: number) {
-    const blob = await expenseService.computeExpenses(environmentId);
+  async function computeExpenses(environmentId: number, excelTexts: ExcelTexts) {
+    const blob = await expenseService.computeExpenses(environmentId, excelTexts);
 
     // Create download link
     const url = window.URL.createObjectURL(blob);

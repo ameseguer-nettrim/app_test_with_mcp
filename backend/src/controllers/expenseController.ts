@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { PoolConnection } from 'mysql2/promise';
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
@@ -214,20 +215,21 @@ export const deleteExpense = async (req: AuthRequest, res: Response): Promise<vo
 
 export const computeExpenses = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { environment_id } = req.body;
+    const { environment_id, excelTexts } = req.body;
 
     if (!environment_id) {
       res.status(400).json({ error: 'environment_id is required' });
       return;
     }
 
-    // Check if user has access to this environment
-    const [access] = await db.query<RowDataPacket[]>(
-      'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
-      [environment_id, req.person!.personId],
-    );
+    if (!excelTexts) {
+      res.status(400).json({ error: 'excelTexts is required' });
+      return;
+    }
 
-    if (access.length === 0) {
+    // Check if user has access to this environment
+    const hasAccess = await validateUserAccessToEnvironment(environment_id, req.person!.personId);
+    if (!hasAccess) {
       res.status(403).json({ error: 'Access denied to this environment' });
       return;
     }
@@ -237,21 +239,8 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
     try {
       await connection.beginTransaction();
 
-      // Get all non-computed expenses for this environment (to generate the Excel file)
-      const [expenses] = await connection.query<RowDataPacket[]>(
-        `SELECT e.*, 
-                payer.name as payer_name,
-                registered.name as registered_by_name,
-                cat.id as category_id,
-                cat.name as category_name
-         FROM expenses e
-         INNER JOIN people payer ON e.payer_id = payer.id
-         INNER JOIN people registered ON e.registered_by_id = registered.id
-         LEFT JOIN expense_categories cat ON e.category_id = cat.id
-         WHERE e.environment_id = ? AND e.is_computed = false
-         ORDER BY cat.name ASC, e.expense_date ASC`,
-        [environment_id],
-      );
+      // Fetch non-computed expenses
+      const expenses = await fetchNonComputedExpenses(connection, environment_id);
 
       if (expenses.length === 0) {
         await connection.rollback();
@@ -262,137 +251,27 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
       // Mark expenses as computed with flag and metadata
       await connection.query(
         `UPDATE expenses
-         SET is_computed = true,
-             computed_at = NOW(),
-             computed_by_id = ?
-         WHERE environment_id = ? AND is_computed = false`,
+      SET is_computed = true,
+      computed_at = NOW(),
+      computed_by_id = ?
+      WHERE environment_id = ? AND is_computed = false`,
         [req.person!.personId, environment_id],
       );
 
       await connection.commit();
 
-      // Generate Excel file
+      // Generate workbook
       const workbook = new ExcelJS.Workbook();
 
       // Calculate totals by category
-      const categoryTotals = new Map<string, { total: number; categoryName: string }>();
-      let grandTotal = 0;
+      const { categoryTotals, grandTotal } = calculateCategoryTotals(expenses);
 
-      expenses.forEach((expense) => {
-        const categoryKey = expense.category_name || 'Uncategorized';
-        const amount = parseFloat(expense.amount);
-        grandTotal += amount;
+      // Create sheets
+      createSummarySheet(workbook, categoryTotals, grandTotal, excelTexts);
+      createDetailsSheet(workbook, expenses, excelTexts);
 
-        if (!categoryTotals.has(categoryKey)) {
-          categoryTotals.set(categoryKey, { total: 0, categoryName: expense.category_name });
-        }
-        const current = categoryTotals.get(categoryKey)!;
-        current.total += amount;
-      });
-
-      // ===== SHEET 1: SUMMARY =====
-      const summarySheet = workbook.addWorksheet('Summary');
-
-      summarySheet.columns = [
-        { header: 'Category', key: 'category', width: 25 },
-        { header: 'Amount', key: 'amount', width: 15 },
-        { header: '% of Total', key: 'percentage', width: 15 },
-      ];
-
-      // Style header
-      summarySheet.getRow(1).font = { bold: true, size: 12 };
-      summarySheet.getRow(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4472C4' },
-      };
-      summarySheet.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-
-      // Add summary rows
-      Array.from(categoryTotals.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .forEach(([category, data]) => {
-          const percentage = grandTotal > 0 ? ((data.total / grandTotal) * 100).toFixed(2) : '0.00';
-          summarySheet.addRow({
-            category: category,
-            amount: data.total,
-            percentage: `${percentage}%`,
-          });
-        });
-
-      // Add total row
-      const totalRow = summarySheet.addRow({
-        category: 'TOTAL',
-        amount: grandTotal,
-        percentage: '100%',
-      });
-      totalRow.font = { bold: true, size: 11 };
-      totalRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFFFD700' },
-      };
-
-      // Format amount columns
-      summarySheet.getColumn('amount').numFmt = '€#,##0.00';
-
-      // ===== SHEET 2: DETAILS =====
-      const detailsSheet = workbook.addWorksheet('Details');
-
-      detailsSheet.columns = [
-        { header: 'Category', key: 'category', width: 20 },
-        { header: 'Date', key: 'date', width: 12 },
-        { header: 'Description', key: 'description', width: 35 },
-        { header: 'Amount', key: 'amount', width: 12 },
-        { header: 'Paid By', key: 'payer', width: 18 },
-      ];
-
-      // Style header
-      detailsSheet.getRow(1).font = { bold: true, size: 12 };
-      detailsSheet.getRow(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4472C4' },
-      };
-      detailsSheet.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-
-      // Add data rows grouped and sorted by category and date
-      expenses.forEach((expense) => {
-        detailsSheet.addRow({
-          category: expense.category_name || 'Uncategorized',
-          date: new Date(expense.expense_date).toLocaleDateString(),
-          description: expense.description,
-          amount: parseFloat(expense.amount),
-          payer: expense.payer_name,
-        });
-      });
-
-      // Format amount column
-      detailsSheet.getColumn('amount').numFmt = '€#,##0.00';
-
-      // Generate filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `expenses_${environment_id}_${timestamp}.xlsx`;
-      const exportsDir = path.join(__dirname, '../../exports');
-
-      // Create exports directory if it doesn't exist
-      if (!fs.existsSync(exportsDir)) {
-        fs.mkdirSync(exportsDir, { recursive: true });
-      }
-
-      const filepath = path.join(exportsDir, filename);
-
-      // Write file
-      await workbook.xlsx.writeFile(filepath);
-
-      // Send file as response
-      res.download(filepath, filename, (err) => {
-        if (err) {
-          console.error('Error downloading file:', err);
-        }
-        // Delete file after download
-        fs.unlinkSync(filepath);
-      });
+      // Generate and send Excel
+      await generateAndSendExcel(res, workbook, environment_id);
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -461,4 +340,206 @@ export const getComputedExpenses = async (req: AuthRequest, res: Response): Prom
     console.error('Get computed expenses error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+};
+
+// ===== HELPER FUNCTIONS AND TYPES FOR COMPUTE EXPENSES =====
+
+interface ExpenseRow extends RowDataPacket {
+  id: number;
+  amount: string;
+  expense_date: string;
+  payer_name: string;
+  registered_by_name: string;
+  category_name: string | null;
+  description: string;
+}
+
+interface CategoryTotal {
+  total: number;
+  categoryName: string | null;
+}
+
+interface ExcelMessages {
+  summary: string;
+  details: string;
+  category: string;
+  amount: string;
+  percentage: string;
+  date: string;
+  description: string;
+  paidBy: string;
+  total: string;
+}
+
+const validateUserAccessToEnvironment = async (
+  environment_id: string | number,
+  person_id: number,
+): Promise<boolean> => {
+  const [access] = await db.query<RowDataPacket[]>(
+    'SELECT 1 FROM environment_person WHERE environment_id = ? AND person_id = ?',
+    [environment_id, person_id],
+  );
+  return access.length > 0;
+};
+
+const fetchNonComputedExpenses = async (
+  connection: PoolConnection,
+  environment_id: string | number,
+): Promise<ExpenseRow[]> => {
+  const [expenses] = await connection.query<ExpenseRow[]>(
+    `SELECT e.*, 
+            payer.name as payer_name,
+            registered.name as registered_by_name,
+            cat.id as category_id,
+            cat.name as category_name
+     FROM expenses e
+     INNER JOIN people payer ON e.payer_id = payer.id
+     INNER JOIN people registered ON e.registered_by_id = registered.id
+     LEFT JOIN expense_categories cat ON e.category_id = cat.id
+     WHERE e.environment_id = ? AND e.is_computed = false
+     ORDER BY cat.name ASC, e.expense_date ASC`,
+    [environment_id],
+  );
+  return expenses;
+};
+
+const calculateCategoryTotals = (
+  expenses: ExpenseRow[],
+): { categoryTotals: Map<string, CategoryTotal>; grandTotal: number } => {
+  const categoryTotals = new Map<string, CategoryTotal>();
+  let grandTotal = 0;
+
+  expenses.forEach((expense) => {
+    const categoryKey = expense.category_name || 'Uncategorized';
+    const amount = parseFloat(expense.amount);
+    grandTotal += amount;
+
+    if (!categoryTotals.has(categoryKey)) {
+      categoryTotals.set(categoryKey, { total: 0, categoryName: expense.category_name });
+    }
+    const current = categoryTotals.get(categoryKey)!;
+    current.total += amount;
+  });
+
+  return { categoryTotals, grandTotal };
+};
+
+const createSummarySheet = (
+  workbook: ExcelJS.Workbook,
+  categoryTotals: Map<string, CategoryTotal>,
+  grandTotal: number,
+  messages: ExcelMessages,
+): void => {
+  const summarySheet = workbook.addWorksheet(messages.summary);
+
+  summarySheet.columns = [
+    { header: messages.category, key: 'category', width: 25 },
+    { header: messages.amount, key: 'amount', width: 15 },
+    { header: messages.percentage, key: 'percentage', width: 15 },
+  ];
+
+  // Style header
+  const headerRow = summarySheet.getRow(1);
+  headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4472C4' },
+  };
+
+  // Add summary rows
+  Array.from(categoryTotals.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .forEach(([category, data]) => {
+      const percentage = grandTotal > 0 ? ((data.total / grandTotal) * 100).toFixed(2) : '0.00';
+      summarySheet.addRow({
+        category: category,
+        amount: data.total,
+        percentage: `${percentage}%`,
+      });
+    });
+
+  // Add total row
+  const totalRow = summarySheet.addRow({
+    category: messages.total,
+    amount: grandTotal,
+    percentage: '100%',
+  });
+  totalRow.font = { bold: true, size: 11 };
+  totalRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFFFD700' },
+  };
+
+  // Format amount columns
+  summarySheet.getColumn('amount').numFmt = '€#,##0.00';
+};
+
+const createDetailsSheet = (
+  workbook: ExcelJS.Workbook,
+  expenses: ExpenseRow[],
+  messages: ExcelMessages,
+): void => {
+  const detailsSheet = workbook.addWorksheet(messages.details);
+
+  detailsSheet.columns = [
+    { header: messages.category, key: 'category', width: 20 },
+    { header: messages.date, key: 'date', width: 12 },
+    { header: messages.description, key: 'description', width: 35 },
+    { header: messages.amount, key: 'amount', width: 12 },
+    { header: messages.paidBy, key: 'payer', width: 18 },
+  ];
+
+  // Style header
+  const headerRow = detailsSheet.getRow(1);
+  headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4472C4' },
+  };
+
+  // Add data rows grouped and sorted by category and date
+  expenses.forEach((expense) => {
+    detailsSheet.addRow({
+      category: expense.category_name || 'Uncategorized',
+      date: new Date(expense.expense_date).toLocaleDateString(),
+      description: expense.description,
+      amount: parseFloat(expense.amount),
+      payer: expense.payer_name,
+    });
+  });
+
+  // Format amount column
+  detailsSheet.getColumn('amount').numFmt = '€#,##0.00';
+};
+
+const generateAndSendExcel = async (
+  res: Response,
+  workbook: ExcelJS.Workbook,
+  environment_id: string | number,
+): Promise<void> => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  const filename = `expenses_${environment_id}_${timestamp}.xlsx`;
+  const exportsDir = path.join(__dirname, '../../exports');
+
+  // Create exports directory if it doesn't exist
+  if (!fs.existsSync(exportsDir)) {
+    fs.mkdirSync(exportsDir, { recursive: true });
+  }
+
+  const filepath = path.join(exportsDir, filename);
+
+  // Write file
+  await workbook.xlsx.writeFile(filepath);
+
+  // Send file as response
+  res.download(filepath, filename, (err) => {
+    if (err) {
+      console.error('Error downloading file:', err);
+    }
+    // Delete file after download
+    fs.unlinkSync(filepath);
+  });
 };
