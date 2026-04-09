@@ -38,7 +38,7 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
        INNER JOIN people payer ON e.payer_id = payer.id
        INNER JOIN people registered ON e.registered_by_id = registered.id
        LEFT JOIN expense_categories cat ON e.category_id = cat.id
-       WHERE e.environment_id = ?
+       WHERE e.environment_id = ? AND e.is_computed = false
        ORDER BY e.expense_date DESC, e.created_at DESC`,
       [environment_id],
     );
@@ -237,16 +237,19 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
     try {
       await connection.beginTransaction();
 
-      // Get all non-computed expenses for this environment
+      // Get all non-computed expenses for this environment (to generate the Excel file)
       const [expenses] = await connection.query<RowDataPacket[]>(
         `SELECT e.*, 
                 payer.name as payer_name,
-                registered.name as registered_by_name
+                registered.name as registered_by_name,
+                cat.id as category_id,
+                cat.name as category_name
          FROM expenses e
          INNER JOIN people payer ON e.payer_id = payer.id
          INNER JOIN people registered ON e.registered_by_id = registered.id
-         WHERE e.environment_id = ?
-         ORDER BY e.expense_date ASC`,
+         LEFT JOIN expense_categories cat ON e.category_id = cat.id
+         WHERE e.environment_id = ? AND e.is_computed = false
+         ORDER BY cat.name ASC, e.expense_date ASC`,
         [environment_id],
       );
 
@@ -256,79 +259,116 @@ export const computeExpenses = async (req: AuthRequest, res: Response): Promise<
         return;
       }
 
-      // Move expenses to computed_expenses table
-      for (const expense of expenses) {
-        await connection.query(
-          `INSERT INTO computed_expenses 
-           (expense_id, amount, description, expense_date, payer_id, registered_by_id, environment_id, computed_by_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            expense.id,
-            expense.amount,
-            expense.description,
-            expense.expense_date,
-            expense.payer_id,
-            expense.registered_by_id,
-            expense.environment_id,
-            req.person!.personId,
-          ],
-        );
-      }
-
-      // Delete computed expenses from expenses table
-      await connection.query('DELETE FROM expenses WHERE environment_id = ?', [environment_id]);
+      // Mark expenses as computed with flag and metadata
+      await connection.query(
+        `UPDATE expenses
+         SET is_computed = true,
+             computed_at = NOW(),
+             computed_by_id = ?
+         WHERE environment_id = ? AND is_computed = false`,
+        [req.person!.personId, environment_id],
+      );
 
       await connection.commit();
 
       // Generate Excel file
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Expenses');
 
-      // Define columns
-      worksheet.columns = [
-        { header: 'Date', key: 'expense_date', width: 15 },
-        { header: 'Amount', key: 'amount', width: 12 },
-        { header: 'Description', key: 'description', width: 40 },
-        { header: 'Paid By', key: 'payer_name', width: 20 },
-        { header: 'Registered By', key: 'registered_by_name', width: 20 },
+      // Calculate totals by category
+      const categoryTotals = new Map<string, { total: number; categoryName: string }>();
+      let grandTotal = 0;
+
+      expenses.forEach((expense) => {
+        const categoryKey = expense.category_name || 'Uncategorized';
+        const amount = parseFloat(expense.amount);
+        grandTotal += amount;
+
+        if (!categoryTotals.has(categoryKey)) {
+          categoryTotals.set(categoryKey, { total: 0, categoryName: expense.category_name });
+        }
+        const current = categoryTotals.get(categoryKey)!;
+        current.total += amount;
+      });
+
+      // ===== SHEET 1: SUMMARY =====
+      const summarySheet = workbook.addWorksheet('Summary');
+
+      summarySheet.columns = [
+        { header: 'Category', key: 'category', width: 25 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: '% of Total', key: 'percentage', width: 15 },
       ];
 
       // Style header
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
+      summarySheet.getRow(1).font = { bold: true, size: 12 };
+      summarySheet.getRow(1).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' },
+        fgColor: { argb: 'FF4472C4' },
       };
+      summarySheet.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
-      // Add data
-      expenses.forEach((expense) => {
-        worksheet.addRow({
-          expense_date: new Date(expense.expense_date).toLocaleDateString(),
-          amount: parseFloat(expense.amount),
-          description: expense.description,
-          payer_name: expense.payer_name,
-          registered_by_name: expense.registered_by_name,
+      // Add summary rows
+      Array.from(categoryTotals.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([category, data]) => {
+          const percentage = grandTotal > 0 ? ((data.total / grandTotal) * 100).toFixed(2) : '0.00';
+          summarySheet.addRow({
+            category: category,
+            amount: data.total,
+            percentage: `${percentage}%`,
+          });
         });
-      });
 
       // Add total row
-      const totalRow = worksheet.addRow({
-        expense_date: '',
-        amount: expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0),
-        description: 'TOTAL',
-        payer_name: '',
-        registered_by_name: '',
+      const totalRow = summarySheet.addRow({
+        category: 'TOTAL',
+        amount: grandTotal,
+        percentage: '100%',
       });
-      totalRow.font = { bold: true };
+      totalRow.font = { bold: true, size: 11 };
       totalRow.fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: 'FFFFD700' },
       };
 
-      // Format amount column as currency
-      worksheet.getColumn('amount').numFmt = '€#,##0.00';
+      // Format amount columns
+      summarySheet.getColumn('amount').numFmt = '€#,##0.00';
+
+      // ===== SHEET 2: DETAILS =====
+      const detailsSheet = workbook.addWorksheet('Details');
+
+      detailsSheet.columns = [
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Date', key: 'date', width: 12 },
+        { header: 'Description', key: 'description', width: 35 },
+        { header: 'Amount', key: 'amount', width: 12 },
+        { header: 'Paid By', key: 'payer', width: 18 },
+      ];
+
+      // Style header
+      detailsSheet.getRow(1).font = { bold: true, size: 12 };
+      detailsSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4472C4' },
+      };
+      detailsSheet.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+
+      // Add data rows grouped and sorted by category and date
+      expenses.forEach((expense) => {
+        detailsSheet.addRow({
+          category: expense.category_name || 'Uncategorized',
+          date: new Date(expense.expense_date).toLocaleDateString(),
+          description: expense.description,
+          amount: parseFloat(expense.amount),
+          payer: expense.payer_name,
+        });
+      });
+
+      // Format amount column
+      detailsSheet.getColumn('amount').numFmt = '€#,##0.00';
 
       // Generate filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
@@ -386,20 +426,37 @@ export const getComputedExpenses = async (req: AuthRequest, res: Response): Prom
     }
 
     const [rows] = await db.query<RowDataPacket[]>(
-      `SELECT ce.*, 
+      `SELECT e.*, 
               payer.name as payer_name,
               registered.name as registered_by_name,
-              computed.name as computed_by_name
-       FROM computed_expenses ce
-       INNER JOIN people payer ON ce.payer_id = payer.id
-       INNER JOIN people registered ON ce.registered_by_id = registered.id
-       INNER JOIN people computed ON ce.computed_by_id = computed.id
-       WHERE ce.environment_id = ?
-       ORDER BY ce.computed_at DESC, ce.expense_date DESC`,
+              computed.name as computed_by_name,
+              cat.id as category_id,
+              cat.name as category_name,
+              cat.icon as category_icon,
+              cat.color as category_color
+       FROM expenses e
+       INNER JOIN people payer ON e.payer_id = payer.id
+       INNER JOIN people registered ON e.registered_by_id = registered.id
+       INNER JOIN people computed ON e.computed_by_id = computed.id
+       LEFT JOIN expense_categories cat ON e.category_id = cat.id
+       WHERE e.environment_id = ? AND e.is_computed = true
+       ORDER BY e.computed_at DESC, e.expense_date DESC`,
       [environment_id],
     );
 
-    res.json({ computed_expenses: rows });
+    res.json({
+      computed_expenses: rows.map((r) => ({
+        ...r,
+        category: r.category_id
+          ? {
+              id: r.category_id,
+              name: r.category_name,
+              icon: r.category_icon,
+              color: r.category_color,
+            }
+          : undefined,
+      })),
+    });
   } catch (error) {
     console.error('Get computed expenses error:', error);
     res.status(500).json({ error: 'Internal server error' });
