@@ -69,10 +69,9 @@
         </div>
       </div>
 
-      <!-- description: only required when "Others" is selected -->
       <div>
         <label for="description" class="label">{{ $t('common.description') }}</label>
-        <textarea id="description" v-model="description" :required="isOthersSelected" class="input" rows="2"
+        <textarea id="description" v-model="description" class="input" rows="2"
           :placeholder="$t('expense.descriptionPlaceholder')" />
       </div>
 
@@ -95,7 +94,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue';
 import { useExpenseStore } from '@/stores/expenseStore';
-import i18n from '@/i18n';
 import { useCategoryStore } from '@/stores/categoriesStore';
 import { Person } from '@/types';
 import { useAuthStore } from '@/stores/authStore';
@@ -121,9 +119,7 @@ const error = ref('');
 // category related
 const categories = computed(() => categoryStore.categories);
 const open = ref(false);
-const selectedCategoryKey = ref<number | string | null>(null); // number for category id, 'others' for others
-const OTHER_KEY = 'others';
-
+const selectedCategoryKey = ref<number | string | null>(null);
 
 // Set today's date as default
 onMounted(() => {
@@ -154,27 +150,14 @@ watch(
   { immediate: true },
 );
 
-const categoriesWithOthers = computed(() => {
+const categoriesWithOthers = computed(() =>
   // map to include an internal option key for the template
-  const mapped = categories.value.map(c => ({ ...c, _optionKey: c.id as number | string }));
-  mapped.push({
-    _optionKey: OTHER_KEY,
-    id: null,
-    name: i18n.global.t('expense.others'),
-    icon: null,
-    color: '#6B7280',
-  } as any);
-  return mapped;
-});
+  categories.value.map(c => ({ ...c, _optionKey: c.id as number | string }))
+);
 
-const selectedCategory = computed(() => {
-  if (selectedCategoryKey.value === OTHER_KEY) {
-    return categoriesWithOthers.value.find(c => c._optionKey === OTHER_KEY);
-  }
-  return categories.value.find(c => c.id === selectedCategoryKey.value) || null;
-});
-
-const isOthersSelected = computed(() => selectedCategoryKey.value === OTHER_KEY);
+const selectedCategory = computed(() =>
+  categories.value.find(c => c.id === selectedCategoryKey.value) || null
+);
 
 // dropdown helpers
 function toggleOpen() { open.value = !open.value; }
@@ -188,12 +171,6 @@ function selectCategory(cat: any) {
 const handleSubmit = async () => {
   if (!props.environmentId) {
     error.value = 'Please select an environment first';
-    return;
-  }
-
-  // If Others selected, description is required
-  if (isOthersSelected.value && !description.value.trim()) {
-    error.value = 'Please enter a description for "Otros"';
     return;
   }
 
@@ -213,7 +190,7 @@ const handleSubmit = async () => {
       expense_date: expenseDate.value,
       payer_id: payerId.value as number,
       environment_id: props.environmentId,
-      category_id: selectedCategoryKey.value === OTHER_KEY ? null : (selectedCategoryKey.value as number),
+      category_id: selectedCategoryKey.value as number,
       registered_by_id: useAuthStore().person!.id,
     };
 
