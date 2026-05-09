@@ -5,13 +5,13 @@
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
         <label for="amount" class="label">{{ $t('common.amount') }} (€)</label>
-        <input id="amount" v-model="amount" type="number" step="0.01" required class="input"
+        <input id="amount" v-model="amount" type="number" step="0.01" required class="input" tabindex="0"
           :placeholder="$t('expense.amountPlaceholder')" />
       </div>
 
       <div>
         <label for="payer" class="label">{{ $t('expense.paidBy') }}</label>
-        <select id="payer" v-model="payerId" required class="input">
+        <select id="payer" v-model="payerId" required class="input" tabindex="0">
           <option value="" disabled>{{ $t('expense.selectPerson') }}</option>
           <option v-for="person in people" :key="person.id" :value="person.id">
             {{ person.name }}
@@ -26,6 +26,7 @@
         <!-- selected button -->
         <div class="relative">
           <button type="button" class="input w-full flex items-center justify-between" @click="toggleOpen"
+            @keydown="handleCategoryKeydown" tabindex="0"
             :aria-expanded="open" aria-haspopup="listbox">
             <div class="flex items-center gap-3">
               <template v-if="selectedCategory">
@@ -47,9 +48,10 @@
 
           <!-- dropdown list -->
           <ul v-if="open" class="absolute z-40 mt-1 w-full bg-white border rounded shadow max-h-56 overflow-auto"
-            role="listbox" @keydown.escape="close">
-            <li v-for="cat in categoriesWithOthers" :key="cat._optionKey"
+            role="listbox" @keydown="handleListKeydown">
+            <li v-for="(cat, idx) in categoriesWithOthers" :key="cat._optionKey"
               class="cursor-pointer px-3 py-2 hover:bg-gray-50 flex items-center gap-3"
+              :class="{ 'bg-blue-100': idx === keyboardFocusIndex }"
               :aria-selected="cat._optionKey === selectedCategoryKey" @click="selectCategory(cat)">
               <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs shrink-0"
                 :style="{ backgroundColor: cat.color || '#9CA3AF' }">
@@ -71,20 +73,20 @@
 
       <div>
         <label for="description" class="label">{{ $t('common.description') }}</label>
-        <textarea id="description" v-model="description" class="input" rows="2"
+        <textarea id="description" v-model="description" class="input" rows="2" tabindex="0"
           :placeholder="$t('expense.descriptionPlaceholder')" />
       </div>
 
       <div>
         <label for="expenseDate" class="label">{{ $t('common.date') }}</label>
-        <input id="expenseDate" v-model="expenseDate" type="date" required class="input" />
+        <input id="expenseDate" v-model="expenseDate" type="date" required class="input" tabindex="0" />
       </div>
 
       <div v-if="error" class="text-red-600 text-sm">
         {{ error }}
       </div>
 
-      <button type="submit" :disabled="loading || !environmentId" class="btn btn-primary w-full">
+      <button type="submit" :disabled="loading || !environmentId" class="btn btn-primary w-full" tabindex="0">
         {{ loading ? $t('expense.adding') : $t('expense.add') }}
       </button>
     </form>
@@ -120,6 +122,7 @@ const error = ref('');
 const categories = computed(() => categoryStore.categories);
 const open = ref(false);
 const selectedCategoryKey = ref<number | string | null>(null);
+const keyboardFocusIndex = ref(0);
 
 // Set today's date as default
 onMounted(() => {
@@ -150,6 +153,15 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => open.value,
+  (isOpen) => {
+    if (isOpen) {
+      keyboardFocusIndex.value = 0;
+    }
+  },
+);
+
 const categoriesWithOthers = computed(() =>
   // map to include an internal option key for the template
   categories.value.map(c => ({ ...c, _optionKey: c.id as number | string }))
@@ -166,6 +178,67 @@ function close() { open.value = false; }
 function selectCategory(cat: any) {
   selectedCategoryKey.value = cat._optionKey;
   open.value = false;
+}
+
+function handleCategoryKeydown(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (!open.value) {
+      open.value = true;
+      keyboardFocusIndex.value = 0;
+    } else {
+      const maxIndex = categoriesWithOthers.value.length - 1;
+      if (event.key === 'ArrowDown') {
+        keyboardFocusIndex.value = Math.min(keyboardFocusIndex.value + 1, maxIndex);
+      } else {
+        keyboardFocusIndex.value = Math.max(keyboardFocusIndex.value - 1, 0);
+      }
+      scrollToFocusedItem();
+    }
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    if (open.value && categoriesWithOthers.value[keyboardFocusIndex.value]) {
+      selectCategory(categoriesWithOthers.value[keyboardFocusIndex.value]);
+    } else if (!open.value) {
+      open.value = true;
+    }
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    close();
+  }
+}
+
+function handleListKeydown(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    const maxIndex = categoriesWithOthers.value.length - 1;
+    keyboardFocusIndex.value = Math.min(keyboardFocusIndex.value + 1, maxIndex);
+    scrollToFocusedItem();
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    keyboardFocusIndex.value = Math.max(keyboardFocusIndex.value - 1, 0);
+    scrollToFocusedItem();
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    if (categoriesWithOthers.value[keyboardFocusIndex.value]) {
+      selectCategory(categoriesWithOthers.value[keyboardFocusIndex.value]);
+    }
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    close();
+  }
+}
+
+function scrollToFocusedItem() {
+  // Scroll the focused item into view
+  const ul = document.querySelector('ul[role="listbox"]');
+  if (ul) {
+    const items = ul.querySelectorAll('li');
+    const focusedItem = items[keyboardFocusIndex.value];
+    if (focusedItem) {
+      focusedItem.scrollIntoView({ block: 'nearest' });
+    }
+  }
 }
 
 const handleSubmit = async () => {
